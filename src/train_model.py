@@ -4,7 +4,7 @@ from sklearn.model_selection import TimeSeriesSplit, GridSearchCV
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.metrics import f1_score, classification_report, log_loss, brier_score_loss
 from sklearn.calibration import CalibratedClassifierCV
-from preprocessor import load_and_clean
+from src.preprocessor import load_and_clean
 import xgboost as xgb
 
 # Define date cutoff and feature_cols for train-test split.
@@ -90,10 +90,7 @@ def main():
     final_model = best_model
     print(final_model)
 
-    joblib.dump({
-        'model': final_model,
-        'feature_cols': feature_cols
-    }, 'premier_model.pkl')
+    joblib.dump(final_model, 'premier_model.pkl')  
 
 if __name__ == "__main__":
     main()

@@ -1,10 +1,9 @@
 import joblib
 import pandas as pd
-from preprocessor import load_and_clean
-from train_model import feature_cols
+from src.preprocessor import load_and_clean
+from src.train_model import feature_cols
 
-_bundle = joblib.load('model/premier_model.pkl')
-_MODEL = _bundle['model']
+_MODEL = joblib.load('premier_model.pkl')
 
 def predict_matches(team1, team2):
     df = load_and_clean('prem_data.csv')
@@ -23,3 +22,15 @@ def predict_matches(team1, team2):
     proba = _MODEL.predict_proba(X)
     preds = _MODEL.predict(X)
     return preds, proba
+
+def predict_matches_bidirectional(team1, team2):
+    preds1, proba1 = predict_matches(team1, team2)
+    preds2, proba2 = predict_matches(team2, team1)
+
+    reversed_proba2 = proba2[0][[2,1,0]]
+
+    avg_proba = (proba1 + reversed_proba2) / 2
+
+    final_pred = avg_proba.argmax()
+
+    return final_pred, avg_proba

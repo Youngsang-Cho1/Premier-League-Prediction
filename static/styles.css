@@ -1,0 +1,45 @@
+body {
+  font-family: sans-serif;
+  text-align: center;
+  padding: 30px;
+}
+
+.team-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 15px;
+  max-width: 800px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.team {
+  padding: 15px;
+  background-color: #f0f0f0;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: transform 0.2s, background-color 0.2s;
+  border: 2px solid transparent;
+}
+
+.team:hover {
+  background-color: #e0e0e0;
+  transform: scale(1.05);
+}
+
+.selected {
+  background-color: #4CAF50;
+  color: white;
+  border-color: #388e3c;
+}
+
+#predictBtn {
+  margin-top: 30px;
+  padding: 10px 20px;
+  font-size: 16px;
+}
+
+#result {
+  margin-top: 20px;
+  font-weight: bold;
+}

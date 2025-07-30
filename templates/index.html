@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang = 'en'>
+<head>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" type="text/css" media="screen" charset="utf-8">
+    <meta charset = 'UTF-8'>
+    <title>Premier League Predictor</title>
+</head>
+<body>
+    <h2>Select Two Teams</h2>
+    <div class = 'team-grid', id = 'teamGrid'></div>
+    <button id = 'predictBtn'>Predict</button>
+    <div id = result></div>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
