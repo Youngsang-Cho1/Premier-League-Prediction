@@ -7,7 +7,7 @@ A full-stack machine learning web app that predicts English Premier League match
 
 - 🐍 Python 3.10+
 - 🔥 Flask — lightweight backend API
-- 🤖 scikit-learn, XGBoost — ML model training and prediction
+- 🤖 scikit-learn, Random Forest, Gradient Boost, XGBoost — ML model training and prediction
 - 📊 pandas, NumPy — data preprocessing
 - 🎯 GridSearchCV — model tuning
 - 🎨 HTML + CSS + JavaScript — responsive, interactive UI
@@ -24,7 +24,7 @@ A full-stack machine learning web app that predicts English Premier League match
 - 🔄 Bi-directional prediction logic for better balance
 - 📦 REST API returning predictions & probability distribution
 - 🎨 Clean, responsive team selector interface with logos & colors
-- 🧪 Graceful fallback for teams with no match history
+- 🧪 Graceful fallback for teams with no match history due to promotion/relegation
 
 ---
 
@@ -33,7 +33,7 @@ A full-stack machine learning web app that predicts English Premier League match
 ### 1. Clone the Repo
 ```bash
 git clone https://github.com/your-username/Premier-League-Prediction.git
-cd premier-prediction
+cd Premier-League-Prediction
 ```
 
 ### 2. Create and Activate a Virtual Environment
