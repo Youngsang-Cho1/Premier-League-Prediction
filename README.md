@@ -32,7 +32,7 @@ A full-stack machine learning web app that predicts English Premier League match
 
 ### 1. Clone the Repo
 ```bash
-git clone https://github.com/your-username/premier-prediction.git
+git clone https://github.com/your-username/Premier-League-Prediction.git
 cd premier-prediction
 ```
 
