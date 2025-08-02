@@ -20,6 +20,12 @@ def predict():
 
     ordered_proba = proba[0][[2,1,0]]
 
+    if preds == 'No data':
+        return jsonify({
+            'result' : -1,
+            'probabilities' : ordered_proba.tolist()
+        })
+
     return jsonify({
         'result': int(preds),
         'probabilities': ordered_proba.tolist()

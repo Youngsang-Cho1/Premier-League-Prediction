@@ -19,7 +19,7 @@ def tune_and_evaluate(estimator, cv, param_grid, model, X_train, y_train, X_test
         estimator=estimator,
         param_grid=param_grid,
         cv=cv,
-        scoring='f1_macro',
+        scoring='f1_macro', # Use f1-macro to enhance draw prediction performance
         refit=True
     )
     grid.fit(X_train, y_train)

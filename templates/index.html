@@ -1,15 +1,36 @@
 <!DOCTYPE html>
 <html lang = 'en'>
 <head>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" type="text/css" media="screen" charset="utf-8">
     <meta charset = 'UTF-8'>
     <title>Premier League Predictor</title>
+    <link 
+        rel="stylesheet" 
+        href="{{ url_for('static', filename='styles.css') }}" 
+        type="text/css" 
+        media="screen" 
+        charset="utf-8">
 </head>
 <body>
-    <h2>Select Two Teams</h2>
-    <div class = 'team-grid', id = 'teamGrid'></div>
+    <h2>Premier League Predictor</h2>
+    <p class="season-info">⚽ Prediction Data based on EPL Seasons <strong>21-22</strong>, <strong>22-23</strong>, <strong>23-24</strong></p>
+
+    <div class = 'team-grid' id = 'teamGrid'></div>
+
     <button id = 'predictBtn'>Predict</button>
-    <div id = result></div>
+
+    <div id = 'loading' class = 'hidden'>
+        <div class="spinner"></div>
+        <span>Processing prediction...</span>
+    </div>
+
+    <div id = 'resultContainer' class = 'hidden'>
+        <img id = 'team1Image' class = 'hidden'/>
+        <span id = 'vsText' style="margin: 0 20px; font-weight: bold;" class = 'hidden'>vs</span>
+        <img id = 'team2Image' class = 'hidden'/>
+    </div>
+
+    <div id = 'result' class = 'hidden'></div>
+    <button id = 'resetBtn' class = 'hidden'>Reset</button>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
