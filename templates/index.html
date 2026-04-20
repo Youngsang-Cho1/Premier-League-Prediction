@@ -1,36 +1,91 @@
 <!DOCTYPE html>
-<html lang = 'en'>
+<html lang="en">
 <head>
-    <meta charset = 'UTF-8'>
-    <title>Premier League Predictor</title>
-    <link 
-        rel="stylesheet" 
-        href="{{ url_for('static', filename='styles.css') }}" 
-        type="text/css" 
-        media="screen" 
-        charset="utf-8">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Premier League Predictor | Pro Analytics</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 </head>
 <body>
-    <h2>Premier League Predictor</h2>
-    <p class="season-info">⚽ Prediction Data based on EPL Seasons <strong>21-22</strong>, <strong>22-23</strong>, <strong>23-24</strong></p>
-
-    <div class = 'team-grid' id = 'teamGrid'></div>
-
-    <button id = 'predictBtn'>Predict</button>
-
-    <div id = 'loading' class = 'hidden'>
-        <div class="spinner"></div>
-        <span>Processing prediction...</span>
+    <!-- Cinematic Intro Layer -->
+    <div id="introLayer" class="intro-layer">
+        <h1 class="intro-text">
+            <span>Welcome to</span><br>
+            Prediction Intelligence
+        </h1>
     </div>
 
-    <div id = 'resultContainer' class = 'hidden'>
-        <img id = 'team1Image' class = 'hidden'/>
-        <span id = 'vsText' style="margin: 0 20px; font-weight: bold;" class = 'hidden'>vs</span>
-        <img id = 'team2Image' class = 'hidden'/>
+    <div class="glass-container" id="mainApp" style="opacity: 0; display: none; transform: translateY(30px);">
+        <header>
+            <div class="logo-area">
+                <i class="fas fa-trophy main-icon"></i>
+                <h1>PREM PREDICTOR <span class="badge">PRO</span></h1>
+            </div>
+            <p class="season-info">Advanced AI Simulation & Real-time Analytics</p>
+        </header>
+
+        <main>
+            <div id="selectionArea">
+                <div class="instructions">Select two teams to simulate a match</div>
+                <div class="team-grid" id="teamGrid"></div>
+                <button id="predictBtn" class="primary-btn">Analyze Matchup</button>
+            </div>
+
+            <div id="loading" class="hidden">
+                <div class="loader-content">
+                    <div class="spinner"></div>
+                    <p>Crunching match history and form factors...</p>
+                </div>
+            </div>
+
+            <div id="resultArea" class="hidden">
+                <div class="matchup-header">
+                    <div class="team-meta team1-meta">
+                        <img id="team1Image" src="" alt="">
+                        <h3 id="team1NameText">Team 1</h3>
+                    </div>
+                    <div class="vs-badge">VS</div>
+                    <div class="team-meta team2-meta">
+                        <img id="team2Image" src="" alt="">
+                        <h3 id="team2NameText">Team 2</h3>
+                    </div>
+                </div>
+
+                <div class="analysis-grid">
+                    <div class="result-card">
+                        <h4>AI Prediction</h4>
+                        <div id="result" class="prediction-text"></div>
+                    </div>
+                    <div class="chart-card">
+                        <h4>Winning Probabilities</h4>
+                        <div class="chart-wrapper">
+                            <canvas id="probabilityChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <button id="resetBtn" class="secondary-btn">New Simulation</button>
+            </div>
+        </main>
+
+        <footer>
+            <p>&copy; 2024 Aiden Cho</p>
+        </footer>
     </div>
 
-    <div id = 'result' class = 'hidden'></div>
-    <button id = 'resetBtn' class = 'hidden'>Reset</button>
+    <!-- Enhanced Modal Popup System -->
+    <div id="popupModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-icon" id="modalIcon"></div>
+            <h2 id="modalTitle">Alert</h2>
+            <p id="modalMessage">Message content goes here.</p>
+            <button id="modalCloseBtn" class="primary-btn small-btn">Okay</button>
+        </div>
+    </div>
+
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>

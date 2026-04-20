@@ -1,4 +1,38 @@
-# macOS Finder metadata
-.DS_Store
+# Python
 __pycache__/
-*.py[cod]
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Databases & Data
+premier_league.db
+premier_league.db-journal
+*.log
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Flask
+instance/
+.webassets-cache
+.env
+
+# Project Specific
+# We keep premier_model.pkl in repo for deployment convenience unless too large
+# prem_data.csv is the master source, so we definitely keep it.

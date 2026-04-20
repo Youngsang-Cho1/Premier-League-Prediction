@@ -1,7 +1,8 @@
 from flask import Flask, request, jsonify, render_template
 import pandas as pd
-from src.infer import predict_matches, predict_matches_bidirectional
+from src.infer import predict_matches_bidirectional
 import joblib
+import os
 
 app = Flask(__name__)
 model = joblib.load('premier_model.pkl')
@@ -18,21 +19,14 @@ def predict():
 
     preds, proba = predict_matches_bidirectional(team1, team2)
 
-    ordered_proba = proba[0][[2,1,0]]
-
-    if preds == 'No data':
-        return jsonify({
-            'result' : -1,
-            'probabilities' : ordered_proba.tolist()
-        })
+    # Historical logic: proba indices are [Lose, Draw, Win]
+    ordered_proba = proba[0]
 
     return jsonify({
         'result': int(preds),
         'probabilities': ordered_proba.tolist()
     })
 
-print(model.classes_)
-
 if __name__ == '__main__':
-    app.run(debug=True)
-    
+    port = int(os.environ.get('PORT', 5001))
+    app.run(debug=False, host='0.0.0.0', port=port)

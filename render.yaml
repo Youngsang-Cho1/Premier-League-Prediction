@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: premier-predictor-pro
+    env: docker
+    plan: free 
+    region: oregon 
+    dockerContext: .
+    dockerfilePath: Dockerfile
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: "true"

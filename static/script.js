@@ -1,190 +1,230 @@
 const teamColors = {
-    // red color teams
-    "Arsenal": "rgba(239, 1, 7, 0.8)",           
-    "Liverpool": "rgba(200, 16, 46, 0.8)",           
-    "Manchester Utd": "rgba(218, 41, 28, 0.8)",  
-    "Southampton": "rgba(215, 25, 32, 0.8)",         
-    "Nott'ham Forest": "rgba(221, 38, 38, 0.8)",      
-    "Burnley": "rgba(108, 29, 69, 0.8)",             
-    "Sheffield Utd": "rgba(238, 54, 36, 0.8)",      
-
-    // blue color teams
-    "Chelsea": "rgba(3, 70, 148, 0.8)",              
-    "Manchester City": "rgba(108, 171, 221, 0.8)",   
-    "Everton": "rgba(39, 68, 136, 0.8)",             
-    "Leicester City": "rgba(67, 126, 191, 0.8)",     
-    "Brighton": "rgba(0, 87, 184, 0.8)", 
-    "Tottenham": "rgba(19, 31, 83, 0.8)",             
-
-    // purple & magenta color teams
-    "Aston Villa": "rgba(149, 191, 229, 0.8)",         
-    "West Ham": "rgba(122, 38, 82, 0.8)",            
-    "Crystal Palace": "rgba(27, 69, 143, 0.8)",      
-
-    // white color teams
-    "Leeds United": "rgba(255, 255, 255, 0.8)",      
-    "Newcastle Utd": "rgba(45, 45, 45, 0.8)",        
-    "Fulham": "rgba(0, 0, 0, 0.8)",                  
-
-    // yellow color teams
-    "Norwich City": "rgba(255, 193, 7, 0.8)",        
-    "Watford": "rgba(251, 197, 49, 0.8)",            
-    "Wolves": "rgba(253, 185, 19, 0.8)",             
-
-    // orange/red combined color teams
-    "Luton Town": "rgba(255, 140, 0, 0.8)",          
-    "Bournemouth": "rgba(218, 41, 28, 0.8)",        
-    "Brentford": "rgba(214, 41, 54, 0.8)"           
+    "Arsenal": "#EF0107", "Liverpool": "#C8102E", "Manchester Utd": "#DA291C",
+    "Southampton": "#D71920", "Nott'ham Forest": "#DD2626", "Burnley": "#6C1D45",
+    "Sheffield Utd": "#EE3624", "Chelsea": "#034694", "Manchester City": "#6CABDD",
+    "Everton": "#274488", "Leicester City": "#437EBF", "Brighton": "#0057B8",
+    "Tottenham": "#131F53", "Aston Villa": "#95BFE5", "West Ham": "#7A2652",
+    "Crystal Palace": "#1B458F", "Leeds United": "#FFD200", "Newcastle Utd": "#2D2D2D",
+    "Fulham": "#000000", "Norwich City": "#FFF200", "Watford": "#FB9106",
+    "Wolves": "#FDB913", "Luton Town": "#F78F1E", "Bournemouth": "#DA291C",
+    "Brentford": "#E30613"
 };
 
+const premTeams = Object.keys(teamColors).sort();
 
-const premTeams = (['Manchester City', 'Arsenal', 'Liverpool',
-    'Tottenham', 'Chelsea', 'Manchester Utd', 'Newcastle Utd', 'Aston Villa', 'West Ham',
-    'Crystal Palace', 'Wolves', 'Brighton', 'Bournemouth', 'Leicester City', 'Fulham', 'Everton', 'Brentford',
-    "Nott'ham Forest", 'Luton Town', 'Burnley', 'Sheffield Utd', 'Leeds United',
-    'Southampton', 'Watford', 'Norwich City'])
-
-let selected = []
-
+let selectedTeams = [];
+let probabilityChart = null;
 
 document.addEventListener('DOMContentLoaded', () => {
+    const introLayer = document.getElementById('introLayer');
+    const introText = introLayer.querySelector('.intro-text');
+    const mainApp = document.getElementById('mainApp');
+
+    // Cinematic Intro Sequence
+    const tl = gsap.timeline();
+    tl.fromTo(introText, { opacity: 0, scale: 0.9, y: 30 }, { opacity: 1, scale: 1, y: 0, duration: 2, ease: 'power3.out', delay: 0.5 })
+      .to(introText, { opacity: 0, scale: 1.1, filter: 'blur(10px)', duration: 1.5, ease: 'power2.in', delay: 3 })
+      .to(introLayer, { opacity: 0, duration: 0.5 })
+      .set(introLayer, { display: 'none' })
+      .set(mainApp, { display: 'block' })
+      .to(mainApp, { opacity: 1, y: 0, duration: 1.5, ease: 'power4.out' });
+
     const grid = document.getElementById('teamGrid');
     const predictBtn = document.getElementById('predictBtn');
-    const loading =  document.getElementById('loading');
-    const team1Image = document.getElementById('team1Image');
-    const team2Image = document.getElementById('team2Image');
-    const resultContainer = document.getElementById('resultContainer');
-    const vsText = document.getElementById('vsText');
-    const result = document.getElementById('result');
+    const updateDataBtn = document.getElementById('updateDataBtn');
+    const selectionArea = document.getElementById('selectionArea');
+    const resultArea = document.getElementById('resultArea');
+    const loading = document.getElementById('loading');
     const resetBtn = document.getElementById('resetBtn');
+    const toast = document.getElementById('toast');
 
-    function normalizeTeamName(name) {
-        return name.replace(" ", "-").replace("'", "");
-    }
-
-    function showResults() {
-        grid.classList.add('hidden')
-        predictBtn.classList.add('hidden')
-        resultContainer.classList.remove('hidden')
-        vsText.classList.remove('hidden')
-        team1Image.classList.remove('hidden')
-        team2Image.classList.remove('hidden')
-        result.classList.remove('hidden')
-        resetBtn.classList.remove('hidden')
-    }
-
-    function hideResults() {
-        grid.classList.remove('hidden')
-        predictBtn.classList.remove('hidden')
-        resultContainer.classList.add('hidden')
-        vsText.classList.add('hidden')
-        team1Image.classList.add('hidden')
-        team2Image.classList.add('hidden')
-        result.classList.add('hidden')
-        resetBtn.classList.add('hidden')
-    }
-
+    // Initialize Team Grid
     premTeams.forEach(team => {
         const div = document.createElement('div');
-        div.classList.add('team')
-
-        const color = teamColors[team] || 'rgba(255,255,255,0.25)';
-        div.style.backgroundColor = color;
-
-        const teamName = normalizeTeamName(team)
-        div.style.backgroundImage = `url(/static/images/${teamName}-logo.png)`;
-
+        div.className = 'team';
+        
+        const img = document.createElement('img');
+        const normalName = team.replace(/ /g, '-').replace(/'/g, '');
+        img.src = `/static/images/${normalName}-logo.png`;
+        img.onerror = () => img.src = '/static/images/epl-logo.png'; // Fallback
+        
         const name = document.createElement('span');
-        name.classList.add('team-name');
+        name.className = 'team-name';
         name.textContent = team;
+
+        div.appendChild(img);
         div.appendChild(name);
 
-        div.addEventListener('click', () => {
-            if (selected.includes(team)) {
-                selected = selected.filter(t => t !== team)
-                div.classList.remove('selected')
-            }
-            else if (selected.length < 2) {
-                selected.push(team)
-                div.classList.add('selected')
-            }
-            else if (selected.length > 2) {
-                alert('Only two teams can be selected.')
-            }
-        })
-        grid.appendChild(div)
-    })
+        div.addEventListener('click', () => toggleTeamSelection(team, div));
+        grid.appendChild(div);
+    });
 
-    predictBtn.addEventListener('click', async() => {
-        if (selected.length !== 2) {
-            alert('Please select exactly two teams.')
+    // Modal Elements
+    const popupModal = document.getElementById('popupModal');
+    const modalContent = popupModal.querySelector('.modal-content');
+    const modalIcon = document.getElementById('modalIcon');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalMessage = document.getElementById('modalMessage');
+    const modalCloseBtn = document.getElementById('modalCloseBtn');
+
+    modalCloseBtn.addEventListener('click', hideModal);
+
+    function toggleTeamSelection(team, element) {
+        if (selectedTeams.includes(team)) {
+            selectedTeams = selectedTeams.filter(t => t !== team);
+            element.classList.remove('selected');
+        } else if (selectedTeams.length < 2) {
+            selectedTeams.push(team);
+            element.classList.add('selected');
+        } else {
+            showModal("Limit Reached", "You can only select two teams for simulation.", "warning");
+        }
+    }
+
+    predictBtn.addEventListener('click', async () => {
+        if (selectedTeams.length !== 2) {
+            showModal("Action Required", "Please select exactly two teams to run the analysis.", "info");
             return;
         }
-        grid.classList.add('hidden');
-        predictBtn.classList.add('hidden');
-        loading.classList.remove('hidden');
 
-        const url = '/predict'
-        const options = {
-            method : 'POST',
-            headers : {
-                'Content-Type' : 'application/JSON'
-            }, 
-            body : JSON.stringify({team1 : selected[0], team2: selected[1]})
+        // Transition to loading
+        gsap.to(selectionArea, { opacity: 0, duration: 0.3, onComplete: () => {
+            selectionArea.classList.add('hidden');
+            loading.classList.remove('hidden');
+            gsap.fromTo(loading, { opacity: 0 }, { opacity: 1, duration: 0.3 });
+        }});
+
+        try {
+            const response = await fetch('/predict', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ team1: selectedTeams[0], team2: selectedTeams[1] })
+            });
+            const data = await response.json();
+
+            // Simulate "thinking" time for effect
+            await new Promise(r => setTimeout(r, 1500));
+
+            displayResults(data);
+        } catch (error) {
+            showModal("Connection Error", "Error connecting to prediction server. Please try again.", "error");
+            resetUI();
         }
-        const res = await fetch(url, options);
-        const data = await res.json();
+    });
 
-        await new Promise(resolve => setTimeout(resolve, 3000));
-
+    function displayResults(data) {
         loading.classList.add('hidden');
+        resultArea.classList.remove('hidden');
 
-        const team1 = selected[0];
-        const team2 = selected[1];
-        const team1Name = normalizeTeamName(team1);
-        const team2Name = normalizeTeamName(team2);
+        // Set images and names
+        const t1Normal = selectedTeams[0].replace(/ /g, '-').replace(/'/g, '');
+        const t2Normal = selectedTeams[1].replace(/ /g, '-').replace(/'/g, '');
+        document.getElementById('team1Image').src = `/static/images/${t1Normal}-logo.png`;
+        document.getElementById('team2Image').src = `/static/images/${t2Normal}-logo.png`;
+        document.getElementById('team1NameText').textContent = selectedTeams[0];
+        document.getElementById('team2NameText').textContent = selectedTeams[1];
 
-        team1Image.src = `/static/images/${team1Name}-logo.png`;
-        team2Image.src = `/static/images/${team2Name}-logo.png`;
+        const resultDiv = document.getElementById('result');
+        const labels = ['Lose', 'Draw', 'Win'];
+        const probs = data.probabilities; // [Lose, Draw, Win]
 
         if (data.result === -1) {
-            result.innerHTML = `
-                ${team1} vs ${team2} → <br>
-                Prediction Unavailable: <strong> No Premier League match history found between ${team1} and ${team2}.</strong><br>
-            `;
-            showResults();
-            return;
+            resultDiv.innerHTML = "Insufficient historical data for a confident prediction.";
+        } else {
+            const outcome = labels[data.result];
+            const confidence = (probs[data.result] * 100).toFixed(1);
+            resultDiv.innerHTML = `Our model predicts a <strong>${outcome}</strong> for ${selectedTeams[0]} with <strong>${confidence}%</strong> confidence.`;
         }
 
-        const labels = ['Win', 'Draw', 'Lose'];
-        const probs = data.probabilities;
-        const labeledProbs = labels.map((label, i) => `${label} : ${(probs[i] * 100).toFixed(1)}%`).join('  /  ');
-        const resultLabel = labels[[2, 1, 0].indexOf(data.result)];
+        // Chart.js
+        updateChart(probs);
 
-        const win_prob = probs[2];
-        const draw_prob = probs[1];
-        const lose_prob = probs[0];
+        // Animate entrance
+        gsap.fromTo("#resultArea", { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8, ease: "power3.out" });
+    }
 
-        if (Math.abs(win_prob - lose_prob) < 0.07 && draw_prob > 0.25) {
-            result.innerHTML = `
-                ${team1} vs ${team2} → <br>
-                Prediction: Close match. Still, <strong class = "${resultLabel.toLowerCase()}">${team1} is slightly more likely to ${resultLabel}.</strong><br>
-                Probabilities: ${labeledProbs}
-            `;
+    function updateChart(probs) {
+        const ctx = document.getElementById('probabilityChart').getContext('2d');
+        
+        if (probabilityChart) {
+            probabilityChart.destroy();
         }
-        else {
-            result.innerHTML = `
-                ${team1} vs ${team2} → <br>
-                Prediction: <strong  class = "${resultLabel.toLowerCase()}">${team1} expected to ${resultLabel}.</strong><br>
-                Probabilities: ${labeledProbs}
-            `;
-        }
-        showResults();
-    });
 
-    resetBtn.addEventListener('click', () => {
-        selected = [];
-        document.querySelectorAll('.team.selected').forEach(el => el.classList.remove('selected'));
-        hideResults();
-    });
+        probabilityChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Lose', 'Draw', 'Win'],
+                datasets: [{
+                    data: probs,
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.8)',
+                        'rgba(255, 206, 86, 0.8)',
+                        '#00ff85' // Premier League Green for Win
+                    ],
+                    borderColor: [
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        '#00ff85'
+                    ],
+                    borderWidth: 2,
+                    hoverOffset: 15
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: 'rgba(255, 255, 255, 0.9)',
+                            font: { size: 12, weight: 'bold' },
+                            padding: 20,
+                            usePointStyle: true
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    resetBtn.addEventListener('click', resetUI);
+
+    function resetUI() {
+        selectedTeams = [];
+        document.querySelectorAll('.team').forEach(t => t.classList.remove('selected'));
+        
+        gsap.to(resultArea, { opacity: 0, scale: 0.95, duration: 0.4, onComplete: () => {
+            resultArea.classList.add('hidden');
+            loading.classList.add('hidden');
+            selectionArea.classList.remove('hidden');
+            gsap.fromTo(selectionArea, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5 });
+        }});
+    }
+
+    const iconMap = {
+        'error': '<i class="fas fa-exclamation-triangle"></i>',
+        'warning': '<i class="fas fa-exclamation-circle"></i>',
+        'success': '<i class="fas fa-check-circle"></i>',
+        'info': '<i class="fas fa-info-circle"></i>'
+    };
+
+    function showModal(title, message, type = 'info') {
+        modalTitle.textContent = title;
+        modalMessage.textContent = message;
+        modalIcon.innerHTML = iconMap[type];
+        modalIcon.className = `modal-icon ${type}`;
+        
+        popupModal.classList.remove('hidden');
+        gsap.to(popupModal, { opacity: 1, duration: 0.3 });
+        gsap.fromTo(modalContent, { opacity: 0, scale: 0.8, y: 50 }, { opacity: 1, scale: 1, y: 0, duration: 0.5, ease: 'back.out(1.5)' });
+    }
+
+    function hideModal() {
+        gsap.to(modalContent, { opacity: 0, scale: 0.8, y: 20, duration: 0.3, ease: 'power2.in' });
+        gsap.to(popupModal, { opacity: 0, duration: 0.3, delay: 0.1, onComplete: () => {
+            popupModal.classList.add('hidden');
+        }});
+    }
 });
