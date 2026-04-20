@@ -18,13 +18,18 @@ def predict():
     team2 = data['team2']
 
     preds, proba = predict_matches_bidirectional(team1, team2)
+    
+    # Extract historical insights
+    from src.infer import get_matchup_insights
+    insights = get_matchup_insights(team1, team2)
 
     # Historical logic: proba indices are [Lose, Draw, Win]
     ordered_proba = proba[0]
 
     return jsonify({
         'result': int(preds),
-        'probabilities': ordered_proba.tolist()
+        'probabilities': ordered_proba.tolist(),
+        'insights': insights
     })
 
 if __name__ == '__main__':

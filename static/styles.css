@@ -391,12 +391,17 @@ h1 {
 }
 
 .result-card, .chart-card {
-    background: rgba(255, 255, 255, 0.9); /* Near solid as requested */
-    border: 2px solid rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.98); /* Almost solid for maximum readability */
+    border: 2px solid rgba(255, 255, 255, 0.9);
     border-radius: 40px;
     padding: 40px;
-    backdrop-filter: blur(5px);
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.1), inset 0 0 30px rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(20px);
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.15), inset 0 0 40px rgba(255, 255, 255, 0.1);
+    transition: transform 0.3s ease;
+}
+
+.result-card:hover, .chart-card:hover {
+    transform: translateY(-5px);
 }
 
 h4 {
@@ -410,16 +415,110 @@ h4 {
 }
 
 .prediction-text {
-    font-size: 1.5rem;
-    line-height: 1.5;
-    color: #333;
-    font-weight: 400;
+    font-size: 1.6rem;
+    line-height: 1.6;
+    color: #1a1a1a; /* Darker charcoal for better contrast */
+    font-weight: 500;
 }
 
 .prediction-text strong {
     font-weight: 800;
-    color: var(--active-blue);
+    color: #008f4b; /* Darker green for readability */
+    text-decoration: underline rgba(0, 255, 133, 0.3);
 }
+
+/* Matchup Insights Styling */
+.matchup-insights-container {
+    margin-top: 50px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    opacity: 1;
+}
+
+.insight-card {
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 30px;
+    padding: 30px;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    text-align: left;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+}
+
+.insight-card h5 {
+    font-size: 0.9rem;
+    color: var(--primary);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 20px;
+    border-left: 4px solid var(--secondary);
+    padding-left: 12px;
+}
+
+.draw-rate-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 150px;
+}
+
+.draw-rate-value {
+    font-size: 3.5rem;
+    font-weight: 900;
+    color: var(--primary);
+    margin-bottom: 10px;
+}
+
+.draw-rate-label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.h2h-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.h2h-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 18px;
+    background: rgba(255, 255, 255, 0.6);
+    border-radius: 15px;
+    font-size: 0.9rem;
+}
+
+.h2h-date {
+    color: var(--text-muted);
+    font-weight: 500;
+    font-size: 0.8rem;
+}
+
+.h2h-score {
+    font-weight: 800;
+    color: var(--primary);
+    font-family: 'Inter', sans-serif;
+    letter-spacing: 1px;
+}
+
+.h2h-result-pill {
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-weight: 800;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    text-align: center;
+    width: 32px;
+}
+
+.h2h-result-pill.W { background: #00ff85; color: #1a1a1a; }
+.h2h-result-pill.L { background: #e90052; color: #fff; }
+.h2h-result-pill.D { background: #ffd900; color: #1a1a1a; }
 
 /* ==========================================================================
    8. PRO ANALYTICS SUITE

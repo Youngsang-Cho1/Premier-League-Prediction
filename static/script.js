@@ -136,11 +136,36 @@ document.addEventListener('DOMContentLoaded', () => {
             resultDiv.innerHTML = `Our model predicts a <strong>${outcome}</strong> for ${selectedTeams[0]} with <strong>${confidence}%</strong> confidence.`;
         }
 
+        // Render Matchup Insights
+        if (data.insights) {
+            document.getElementById('drawRateValue').textContent = data.insights.draw_rate;
+            
+            const historyList = document.getElementById('h2hHistoryList');
+            historyList.innerHTML = '';
+            
+            if (data.insights.history && data.insights.history.length > 0) {
+                data.insights.history.forEach(match => {
+                    const row = document.createElement('div');
+                    row.className = 'h2h-row';
+                    row.innerHTML = `
+                        <div class="h2h-date">${match.date}</div>
+                        <div class="h2h-score">${match.score}</div>
+                        <div class="h2h-result-pill ${match.result}">${match.result}</div>
+                    `;
+                    historyList.appendChild(row);
+                });
+            } else {
+                historyList.innerHTML = '<p style="text-align:center; opacity:0.5; font-size:0.8rem; margin-top:20px;">No recent H2H records found.</p>';
+            }
+        }
+
         // Chart.js
         updateChart(probs);
 
         // Animate entrance
-        gsap.fromTo("#resultArea", { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8, ease: "power3.out" });
+        const tl = gsap.timeline();
+        tl.fromTo("#resultArea", { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8, ease: "power3.out" })
+          .fromTo(".insight-card", { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, stagger: 0.1, ease: "back.out(1.2)" }, "-=0.4");
     }
 
     function updateChart(probs) {

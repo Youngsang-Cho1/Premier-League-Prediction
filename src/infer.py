@@ -34,3 +34,62 @@ def predict_matches_bidirectional(team1, team2):
     final_pred = avg_proba.argmax()
 
     return final_pred, avg_proba
+
+def get_matchup_insights(team1, team2):
+    """
+    Extract historical H2H results and calculate draw rate directly from CSV.
+    """
+    try:
+        df = pd.read_csv('prem_data.csv')
+        
+        # Simple name mapping for CSV hyphenated names
+        team_rev_dict = {
+            'Manchester City': 'Manchester-City',
+            'Manchester Utd': 'Manchester-United',
+            'Newcastle Utd': 'Newcastle-United',
+            'Tottenham': 'Tottenham-Hotspur',
+            'Wolves': 'Wolverhampton-Wanderers',
+            'Sheffield Utd': 'Sheffield-United',
+            'Leicester City': 'Leicester-City',
+            'Leeds United': 'Leeds-United'
+        }
+        
+        t1_norm = team_rev_dict.get(team1, team1.replace(' ', '-'))
+        t2_norm = team_rev_dict.get(team2, team2.replace(' ', '-'))
+        
+        # Filter for matchups
+        h2h_df = df[((df['Team'] == t1_norm) & (df['Opponent'] == t2_norm)) | 
+                    ((df['Team'] == t2_norm) & (df['Opponent'] == t1_norm))].copy()
+        
+        if h2h_df.empty:
+            return {"draw_rate": "0%", "count": 0, "history": []}
+            
+        h2h_df['Date'] = pd.to_datetime(h2h_df['Date'])
+        # Drop duplicates as CSV has rows for both sides of a match
+        h2h_df = h2h_df.drop_duplicates(subset=['Date'])
+        h2h_df = h2h_df.sort_values('Date', ascending=False)
+        
+        # Draw Rate
+        draws = len(h2h_df[h2h_df['Result'] == 'D'])
+        draw_rate = f"{(draws / len(h2h_df) * 100):.1f}%"
+        
+        # Recent History
+        history = []
+        for _, row in h2h_df.head(5).iterrows():
+            res = row['Result']
+            score = f"{int(row['GF'])}-{int(row['GA'])}"
+            history.append({
+                "date": row['Date'].strftime('%Y-%m-%d'),
+                "result": res,
+                "score": score,
+                "opponent": row['Opponent'].replace('-', ' ')
+            })
+            
+        return {
+            "draw_rate": draw_rate,
+            "count": len(h2h_df),
+            "history": history
+        }
+    except Exception as e:
+        print(f"Error extracting insights: {e}")
+        return {"draw_rate": "--", "count": 0, "history": []}
