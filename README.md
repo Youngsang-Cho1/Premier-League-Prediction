@@ -87,6 +87,18 @@ tests). The fixture is described symmetrically from both teams' perspectives:
 Prediction is **bi-directional**: the fixture is predicted from each team's
 perspective and averaged, which balances the home/away framing.
 
+### Predicted scoreline (Dixon-Coles)
+
+Alongside the W/D/L probabilities, the app shows a most-likely **scoreline**
+(e.g. 2-1) from a separate **Dixon-Coles Poisson goal model** (`src/dixon_coles.py`):
+each team gets an attack/defense strength fit by time-weighted maximum
+likelihood, and outcome/scoreline probabilities are read off the resulting
+goal distribution. It is deliberately kept **separate** from the outcome
+prediction — a walk-forward backtest showed a classifier/Dixon-Coles ensemble
+did not reliably beat the calibrated classifier on RPS, so the classifier
+remains the sole source of W/D/L probabilities and Dixon-Coles only supplies
+the scoreline extra.
+
 ---
 
 ## 📡 Data Source & Ingestion

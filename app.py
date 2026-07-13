@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify, render_template
-from src.infer import predict_matches_bidirectional, get_matchup_insights
+from src.infer import (predict_matches_bidirectional, get_matchup_insights,
+                       predict_scoreline)
 import os
 
 app = Flask(__name__)
@@ -25,12 +26,14 @@ def predict():
         return jsonify({'error': str(e)}), 400
 
     insights = get_matchup_insights(team1, team2)
+    scoreline = predict_scoreline(team1, team2)
 
     # proba is ordered [Lose, Draw, Win] for team1 (the home team)
     return jsonify({
         'result': pred,
         'probabilities': proba.tolist(),
-        'insights': insights
+        'insights': insights,
+        'scoreline': scoreline
     })
 
 if __name__ == '__main__':

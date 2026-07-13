@@ -17,6 +17,11 @@ def test_predict_returns_valid_probabilities(client):
     assert sum(probs) == pytest.approx(1.0, abs=1e-6)
     assert all(0.0 <= p <= 1.0 for p in probs)
     assert 'insights' in data
+    # scoreline is an optional Dixon-Coles extra: present as "H-A" or null
+    assert 'scoreline' in data
+    if data['scoreline'] is not None:
+        h, a = data['scoreline'].split('-')
+        assert h.isdigit() and a.isdigit()
 
 
 def test_unknown_team_is_400(client):

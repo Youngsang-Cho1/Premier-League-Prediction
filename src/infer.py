@@ -9,6 +9,14 @@ from src.train_model import feature_cols
 _MODEL = joblib.load('premier_model.pkl')
 _DF = load_and_clean('data/matches.csv')
 
+# Optional Dixon-Coles goal model, used only for the "expected scoreline"
+# extra — never for the W/D/L prediction. If the artifact is missing or fails
+# to load, scoreline is simply omitted; the core prediction is unaffected.
+try:
+    _SCORELINE_MODEL = joblib.load('scoreline_model.pkl')
+except Exception:
+    _SCORELINE_MODEL = None
+
 _TEAMS = set(_DF['Team'].unique())
 
 # Neutral h2h prior: Result is encoded 0=L, 1=D, 2=W, matching the
@@ -108,6 +116,20 @@ def predict_matches_bidirectional(team1, team2):
     final_pred = int(avg_proba.argmax())
 
     return final_pred, avg_proba
+
+
+def predict_scoreline(team1, team2):
+    """Most likely exact scoreline for team1 (home) vs team2 (away) from the
+    Dixon-Coles goal model, as "H-A" (e.g. "2-1"). Returns None if the model
+    is unavailable or either team is unknown to it — the caller treats this
+    as an optional extra, never a hard dependency."""
+    if _SCORELINE_MODEL is None:
+        return None
+    try:
+        home_goals, away_goals = _SCORELINE_MODEL.predict_scoreline(team1, team2)
+        return f"{home_goals}-{away_goals}"
+    except Exception:
+        return None
 
 
 def get_matchup_insights(team1, team2):

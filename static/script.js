@@ -130,6 +130,15 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('team1NameText').textContent = selectedTeams[0];
         document.getElementById('team2NameText').textContent = selectedTeams[1];
 
+        // Predicted scoreline (Dixon-Coles) — optional extra, hidden if absent
+        const scoreTag = document.getElementById('scorelineTag');
+        if (data.scoreline) {
+            scoreTag.textContent = data.scoreline;
+            scoreTag.classList.remove('hidden');
+        } else {
+            scoreTag.classList.add('hidden');
+        }
+
         const resultDiv = document.getElementById('result');
         const labels = ['Lose', 'Draw', 'Win'];
         const probs = data.probabilities; // [Lose, Draw, Win]

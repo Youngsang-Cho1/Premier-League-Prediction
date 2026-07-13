@@ -1,4 +1,5 @@
 import joblib
+import pandas as pd
 from sklearn.model_selection import TimeSeriesSplit, GridSearchCV
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression
@@ -124,6 +125,20 @@ def main(cutoff=CUTOFF, output_path='premier_model.pkl'):
     print(f'\nSelected model: {best_name} (Log-Loss {best_ll:.4f}, Macro-F1 {best_f1:.4f})')
 
     joblib.dump(best_model, output_path)
+
+    # Also fit a Dixon-Coles goal model for the "expected scoreline" feature.
+    # It is a separate artifact, not part of the outcome prediction — the
+    # classifier above remains the sole source of W/D/L probabilities.
+    _train_scoreline_model()
+
+
+def _train_scoreline_model(data_path='data/matches.csv',
+                           output_path='scoreline_model.pkl'):
+    from src.dixon_coles import DixonColesModel
+    matches = pd.read_csv(data_path, parse_dates=['Date'])
+    dc = DixonColesModel().fit(matches)
+    joblib.dump(dc, output_path)
+    print('Saved Dixon-Coles scoreline model.')
 
 if __name__ == "__main__":
     main()
