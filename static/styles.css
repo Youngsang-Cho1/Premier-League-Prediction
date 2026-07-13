@@ -350,11 +350,22 @@ h1 {
 }
 
 .team-meta img {
-    width: 120px; 
+    width: 120px;
     height: 120px;
     object-fit: contain;
     margin-bottom: 20px;
     filter: drop-shadow(0 15px 30px rgba(0,0,0,0.15));
+}
+
+.venue-tag {
+    margin-top: 8px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    background: var(--primary);
+    color: var(--secondary);
+    padding: 2px 12px;
+    border-radius: 30px;
 }
 
 .team-meta h3 {

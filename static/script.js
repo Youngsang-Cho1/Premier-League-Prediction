@@ -7,7 +7,7 @@ const teamColors = {
     "Crystal Palace": "#1B458F", "Leeds United": "#FFD200", "Newcastle Utd": "#2D2D2D",
     "Fulham": "#000000", "Norwich City": "#FFF200", "Watford": "#FB9106",
     "Wolves": "#FDB913", "Luton Town": "#F78F1E", "Bournemouth": "#DA291C",
-    "Brentford": "#E30613"
+    "Brentford": "#E30613", "Sunderland": "#EB172B", "Ipswich Town": "#3A64A3"
 };
 
 const premTeams = Object.keys(teamColors).sort();
@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const img = document.createElement('img');
         const normalName = team.replace(/ /g, '-').replace(/'/g, '');
         img.src = `/static/images/${normalName}-logo.png`;
-        img.onerror = () => img.src = '/static/images/epl-logo.png'; // Fallback
+        img.onerror = () => { img.onerror = null; img.src = '/static/images/epl-logo.jpg'; }; // Fallback
         
         const name = document.createElement('span');
         name.className = 'team-name';
@@ -102,6 +102,12 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             const data = await response.json();
 
+            if (!response.ok) {
+                showModal("Prediction Unavailable", data.error || "The server could not make a prediction for this matchup.", "warning");
+                resetUI();
+                return;
+            }
+
             // Simulate "thinking" time for effect
             await new Promise(r => setTimeout(r, 1500));
 
@@ -133,7 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             const outcome = labels[data.result];
             const confidence = (probs[data.result] * 100).toFixed(1);
-            resultDiv.innerHTML = `Our model predicts a <strong>${outcome}</strong> for ${selectedTeams[0]} with <strong>${confidence}%</strong> confidence.`;
+            resultDiv.innerHTML = `Our model predicts a <strong>${outcome}</strong> for ${selectedTeams[0]} (home) with <strong>${confidence}%</strong> confidence.`;
         }
 
         // Render Matchup Insights
