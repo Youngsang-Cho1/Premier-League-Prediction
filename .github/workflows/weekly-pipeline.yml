@@ -1,0 +1,47 @@
+name: weekly-pipeline
+
+on:
+  schedule:
+    - cron: '0 6 * * MON'   # Monday 06:00 UTC, after the weekend fixtures
+  workflow_dispatch: {}      # manual trigger for testing
+
+permissions:
+  contents: write
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        run: python -m pytest tests/ -q
+
+      - name: Run weekly pipeline (ingest -> evaluate -> drift -> retrain gate)
+        run: python -m src.pipeline
+
+      - name: Commit updated data, metrics and model
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/ metrics/ premier_model.pkl
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "chore: weekly pipeline run $(date -u +%Y-%m-%d)"
+            git push
+          fi
+
+      - name: Trigger Render deploy
+        if: ${{ env.RENDER_DEPLOY_HOOK != '' }}
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: curl -fsS -X POST "$RENDER_DEPLOY_HOOK"

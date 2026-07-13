@@ -1,0 +1,3 @@
+run_date,window_days,n_matches,first_match,last_match,model_logloss,model_acc,odds_logloss,odds_acc
+2026-07-12,60,21,2026-05-13,2026-05-24,1.0745,0.4286,1.0841,0.381
+2026-07-12,60,21,2026-05-13,2026-05-24,1.0745,0.4286,1.0841,0.381

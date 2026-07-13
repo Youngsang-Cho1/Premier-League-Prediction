@@ -36,3 +36,6 @@ instance/
 # Project Specific
 # We keep premier_model.pkl in repo for deployment convenience unless too large
 # prem_data.csv is the master source, so we definitely keep it.
+
+# MLOps pipeline temp artifact
+candidate_model.pkl
