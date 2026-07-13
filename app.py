@@ -1,11 +1,8 @@
 from flask import Flask, request, jsonify, render_template
-import pandas as pd
-from src.infer import predict_matches_bidirectional
-import joblib
+from src.infer import predict_matches_bidirectional, get_matchup_insights
 import os
 
 app = Flask(__name__)
-model = joblib.load('premier_model.pkl')
 
 @app.route('/')
 def home():
@@ -13,22 +10,26 @@ def home():
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    data = request.get_json()
-    team1 = data['team1']
-    team2 = data['team2']
+    data = request.get_json(silent=True) or {}
+    team1 = data.get('team1')
+    team2 = data.get('team2')
 
-    preds, proba = predict_matches_bidirectional(team1, team2)
-    
-    # Extract historical insights
-    from src.infer import get_matchup_insights
+    if not team1 or not team2:
+        return jsonify({'error': 'Both team1 and team2 are required.'}), 400
+    if team1 == team2:
+        return jsonify({'error': 'Please select two different teams.'}), 400
+
+    try:
+        pred, proba = predict_matches_bidirectional(team1, team2)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+
     insights = get_matchup_insights(team1, team2)
 
-    # Historical logic: proba indices are [Lose, Draw, Win]
-    ordered_proba = proba[0]
-
+    # proba is ordered [Lose, Draw, Win] for team1 (the home team)
     return jsonify({
-        'result': int(preds),
-        'probabilities': ordered_proba.tolist(),
+        'result': pred,
+        'probabilities': proba.tolist(),
         'insights': insights
     })
 

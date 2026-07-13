@@ -1,95 +1,139 @@
 import joblib
+import numpy as np
 import pandas as pd
 from src.preprocessor import load_and_clean
 from src.train_model import feature_cols
 
+# Loaded once at import — reprocessing the CSV per request added seconds of
+# latency and the data only changes when the model is retrained.
 _MODEL = joblib.load('premier_model.pkl')
+_DF = load_and_clean('data/matches.csv')
 
-def predict_matches(team1, team2):
-    df = load_and_clean('prem_data.csv')
-    # Get all records of two teams and extract the most recent h2h record
-    match_df = df[(df['Team'] == team1) & (df['Opponent'] == team2)].sort_values('Date', ascending = False)
-    h2h_data = match_df.iloc[0]['h2h_record']
+_TEAMS = set(_DF['Team'].unique())
 
-    # Get the most recent data of team 1
-    team1_data = df[(df['Team'] == team1)].sort_values(by = 'Date', ascending = False).iloc[0]
+# Neutral h2h prior: Result is encoded 0=L, 1=D, 2=W, matching the
+# fillna(1.0) used in training for pairs with no meeting history.
+_NEUTRAL_H2H = 1.0
 
-    feature_input = team1_data[feature_cols].copy()
-    feature_input['h2h_record'] = h2h_data 
+# Rest days are unknown for a hypothetical fixture; assume a normal week
+# for both sides.
+_DEFAULT_DAYS_REST = 7.0
 
-    X = pd.DataFrame([feature_input])
+_RESULT_LETTER = {2: 'W', 1: 'D', 0: 'L'}
 
-    proba = _MODEL.predict_proba(X)
-    preds = _MODEL.predict(X)
-    return preds, proba
+
+def _validate_team(name):
+    if name not in _TEAMS:
+        raise ValueError(f"Unknown team: {name}")
+
+
+def _team_snapshot(team, is_home):
+    """Current pre-match state of a team, aggregated directly over its most
+    recent matches (training features are shift(1) rollings, so the freshest
+    equivalent for a FUTURE fixture includes the team's latest result)."""
+    rows = _DF[_DF['Team'] == team].sort_values('Date')
+    if len(rows) < 5:
+        raise ValueError(f"Not enough match history for {team}")
+
+    last5 = rows.tail(5)
+    snap = {
+        'Recent_GF_avg5': last5['GF'].mean(),
+        'Recent_GA_avg5': last5['GA'].mean(),
+        'Recent_SoT_avg5': last5['SoT'].mean(),
+        'Recent_SoTA_avg5': last5['SoTA'].mean(),
+        'Recent_Result_avg5': last5['Result'].mean(),
+        'Recent_Result_avg20': rows.tail(20)['Result'].mean(),
+        'elo': rows.iloc[-1]['elo_post'],
+    }
+
+    venue_last5 = rows[rows['is_home'] == is_home].tail(5)
+    snap['Recent_Result_venue_avg5'] = (
+        venue_last5['Result'].mean() if len(venue_last5) >= 3
+        else snap['Recent_Result_avg5']
+    )
+
+    denom = snap['Recent_SoT_avg5'] + snap['Recent_SoTA_avg5']
+    snap['SoT_ratio5'] = snap['Recent_SoT_avg5'] / denom if denom > 0 else 0.5
+    return snap
+
+
+def _h2h_record(team, opponent):
+    """Mean of the last two head-to-head results from `team`'s perspective,
+    mirroring the shift(1).rolling(2) feature used in training."""
+    results = (
+        _DF[(_DF['Team'] == team) & (_DF['Opponent'] == opponent)]
+        .sort_values('Date')['Result']
+    )
+    if len(results) < 2:
+        return _NEUTRAL_H2H
+    return results.tail(2).mean()
+
+
+def predict_matches(team, opponent, is_home):
+    """Predict `team`'s result against `opponent`, with `team` at home when
+    is_home=1. The feature vector is assembled explicitly for this matchup
+    from both sides' current snapshots."""
+    _validate_team(team)
+    _validate_team(opponent)
+
+    own = _team_snapshot(team, is_home)
+    opp = _team_snapshot(opponent, 1 - is_home)
+
+    own_cols = ['Recent_GF_avg5', 'Recent_GA_avg5', 'Recent_SoT_avg5',
+                'Recent_SoTA_avg5', 'Recent_Result_avg5', 'Recent_Result_avg20',
+                'Recent_Result_venue_avg5', 'SoT_ratio5']
+    features = {col: own[col] for col in own_cols}
+    features.update({f'opp_{col}': opp[col] for col in own_cols})
+    features['is_home'] = is_home
+    features['days_rest'] = _DEFAULT_DAYS_REST
+    features['rest_diff'] = 0.0
+    features['elo_diff'] = own['elo'] - opp['elo']
+    features['h2h_record'] = _h2h_record(team, opponent)
+
+    X = pd.DataFrame([features], columns=feature_cols, dtype=float)
+    if np.isnan(X.to_numpy()).any():
+        raise ValueError(f"Not enough recent match history for {team} or {opponent}")
+
+    return _MODEL.predict_proba(X)[0]
+
 
 def predict_matches_bidirectional(team1, team2):
-    preds1, proba1 = predict_matches(team1, team2)
-    preds2, proba2 = predict_matches(team2, team1)
+    """Predict team1 (home) vs team2 (away) by averaging the same fixture
+    seen from both teams' perspectives. Probabilities are ordered
+    [Lose, Draw, Win] for team1."""
+    proba_home = predict_matches(team1, team2, is_home=1)
+    proba_away = predict_matches(team2, team1, is_home=0)
 
-    reversed_proba2 = proba2[0][[2,1,0]]
-
-    avg_proba = (proba1 + reversed_proba2) / 2
-
-    final_pred = avg_proba.argmax()
+    avg_proba = (proba_home + proba_away[::-1]) / 2
+    final_pred = int(avg_proba.argmax())
 
     return final_pred, avg_proba
 
+
 def get_matchup_insights(team1, team2):
-    """
-    Extract historical H2H results and calculate draw rate directly from CSV.
-    """
-    try:
-        df = pd.read_csv('prem_data.csv')
-        
-        # Simple name mapping for CSV hyphenated names
-        team_rev_dict = {
-            'Manchester City': 'Manchester-City',
-            'Manchester Utd': 'Manchester-United',
-            'Newcastle Utd': 'Newcastle-United',
-            'Tottenham': 'Tottenham-Hotspur',
-            'Wolves': 'Wolverhampton-Wanderers',
-            'Sheffield Utd': 'Sheffield-United',
-            'Leicester City': 'Leicester-City',
-            'Leeds United': 'Leeds-United'
-        }
-        
-        t1_norm = team_rev_dict.get(team1, team1.replace(' ', '-'))
-        t2_norm = team_rev_dict.get(team2, team2.replace(' ', '-'))
-        
-        # Filter for matchups
-        h2h_df = df[((df['Team'] == t1_norm) & (df['Opponent'] == t2_norm)) | 
-                    ((df['Team'] == t2_norm) & (df['Opponent'] == t1_norm))].copy()
-        
-        if h2h_df.empty:
-            return {"draw_rate": "0%", "count": 0, "history": []}
-            
-        h2h_df['Date'] = pd.to_datetime(h2h_df['Date'])
-        # Drop duplicates as CSV has rows for both sides of a match
-        h2h_df = h2h_df.drop_duplicates(subset=['Date'])
-        h2h_df = h2h_df.sort_values('Date', ascending=False)
-        
-        # Draw Rate
-        draws = len(h2h_df[h2h_df['Result'] == 'D'])
-        draw_rate = f"{(draws / len(h2h_df) * 100):.1f}%"
-        
-        # Recent History
-        history = []
-        for _, row in h2h_df.head(5).iterrows():
-            res = row['Result']
-            score = f"{int(row['GF'])}-{int(row['GA'])}"
-            history.append({
-                "date": row['Date'].strftime('%Y-%m-%d'),
-                "result": res,
-                "score": score,
-                "opponent": row['Opponent'].replace('-', ' ')
-            })
-            
-        return {
-            "draw_rate": draw_rate,
-            "count": len(h2h_df),
-            "history": history
-        }
-    except Exception as e:
-        print(f"Error extracting insights: {e}")
-        return {"draw_rate": "--", "count": 0, "history": []}
+    """Historical H2H summary from team1's perspective, computed on the
+    preprocessed dataframe so team names are consistent."""
+    h2h = (
+        _DF[(_DF['Team'] == team1) & (_DF['Opponent'] == team2)]
+        .sort_values('Date', ascending=False)
+    )
+
+    if h2h.empty:
+        return {"draw_rate": "0%", "count": 0, "history": []}
+
+    draw_rate = f"{(h2h['Result'] == 1).mean() * 100:.1f}%"
+
+    history = []
+    for _, row in h2h.head(5).iterrows():
+        history.append({
+            "date": row['Date'].strftime('%Y-%m-%d'),
+            "result": _RESULT_LETTER[int(row['Result'])],
+            "score": f"{int(row['GF'])}-{int(row['GA'])}",
+            "opponent": team2,
+        })
+
+    return {
+        "draw_rate": draw_rate,
+        "count": len(h2h),
+        "history": history,
+    }

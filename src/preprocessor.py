@@ -1,80 +1,140 @@
 import pandas as pd
 
+# Result encoding used throughout: 0 = Loss, 1 = Draw, 2 = Win.
+
+ELO_BASE = 1500.0
+ELO_NEW_TEAM = 1400.0      # promoted/new teams start below average
+ELO_K = 20.0
+ELO_HOME_ADV = 60.0
+ELO_SEASON_REGRESS = 0.25  # pull ratings toward base between seasons
+
+
+def _compute_elo(matches):
+    """Pre-match and post-match Elo per side. Ratings are recorded BEFORE
+    applying the match result, so the pre columns are leakage-free features;
+    the post columns exist only so inference can read each team's current
+    rating from its latest row."""
+    ratings = {}
+    prev_season = None
+    pre_h, pre_a, post_h, post_a = [], [], [], []
+
+    for row in matches.itertuples():
+        if prev_season is not None and row.Season != prev_season:
+            ratings = {t: r + ELO_SEASON_REGRESS * (ELO_BASE - r)
+                       for t, r in ratings.items()}
+        prev_season = row.Season
+
+        rh = ratings.get(row.HomeTeam, ELO_NEW_TEAM)
+        ra = ratings.get(row.AwayTeam, ELO_NEW_TEAM)
+        expected_home = 1.0 / (1.0 + 10 ** (-((rh + ELO_HOME_ADV) - ra) / 400.0))
+        score_home = {'H': 1.0, 'D': 0.5, 'A': 0.0}[row.FTR]
+        delta = ELO_K * (score_home - expected_home)
+
+        pre_h.append(rh)
+        pre_a.append(ra)
+        ratings[row.HomeTeam] = rh + delta
+        ratings[row.AwayTeam] = ra - delta
+        post_h.append(ratings[row.HomeTeam])
+        post_a.append(ratings[row.AwayTeam])
+
+    return pre_h, pre_a, post_h, post_a
+
+
 def load_and_clean(filepath):
-    df = pd.read_csv(filepath)
+    """Build team-perspective feature rows from the match-level dataset
+    (data/matches.csv, produced by src.ingest).
 
-    # Drop unnecessary columns
-    df = df.drop(columns = ['xG_x']).rename(columns = {'xG_y': 'xG'})
-    df = df.drop(columns = ['Tkl.1'])
-    useless_cols = [
-        'Unnamed: 0', 'Time', 'Comp', 'Round', 'Day', 'Attendance',
-        'Captain', 'Formation', 'Opp Formation', 'Referee',
-        'Match Report', 'Notes'
-    ]
-    df = df.drop(columns=useless_cols)
+    Every feature is computed strictly from information available BEFORE
+    kickoff: rolling stats are shift(1)-ed and Elo is pre-match, so a match
+    never sees its own outcome (no leakage).
+    """
+    matches = pd.read_csv(filepath)
+    matches['Date'] = pd.to_datetime(matches['Date'])
+    matches = matches.sort_values('Date').reset_index(drop=True)
 
-    # Standardize team names
-    team_dict = {
-        'Manchester-City': 'Manchester City',
-        'Arsenal': 'Arsenal',
-        'Liverpool': 'Liverpool',
-        'Aston-Villa': 'Aston Villa',
-        'Tottenham-Hotspur': 'Tottenham',
-        'Chelsea': 'Chelsea',
-        'Newcastle-United': 'Newcastle Utd',
-        'Manchester-United': 'Manchester Utd',
-        'West-Ham-United': 'West Ham',
-        'Crystal-Palace': 'Crystal Palace',
-        'Brighton-and-Hove-Albion': 'Brighton',
-        'Bournemouth': 'Bournemouth',
-        'Fulham': 'Fulham',
-        'Wolverhampton-Wanderers': 'Wolves',
-        'Everton': 'Everton',
-        'Brentford': 'Brentford',
-        'Nottingham-Forest': "Nott'ham Forest",
-        'Luton-Town': 'Luton Town',
-        'Burnley': 'Burnley',
-        'Sheffield-United': 'Sheffield Utd',
-        'Leicester-City': 'Leicester City',
-        'Leeds-United': 'Leeds United',
-        'Southampton': 'Southampton',
-        'Watford': 'Watford',
-        'Norwich-City': 'Norwich City'
-    }
-    df['Team'] = df['Team'].map(team_dict)
-    df['Date'] = pd.to_datetime(df['Date'])
-    df['is_home'] = (df['Venue'] == 'Home').astype(int)
-    df['Opponent_code'] = df['Opponent'].astype('category').cat.codes
+    elo_h, elo_a, elo_h_post, elo_a_post = _compute_elo(matches)
 
-    df = df.sort_values(['Team', 'Date'])
+    # One row per team per match: home perspective + mirrored away perspective.
+    home = pd.DataFrame({
+        'Date': matches['Date'], 'Season': matches['Season'],
+        'Team': matches['HomeTeam'], 'Opponent': matches['AwayTeam'],
+        'is_home': 1,
+        'GF': matches['FTHG'], 'GA': matches['FTAG'],
+        'SoT': matches['HST'], 'SoTA': matches['AST'],
+        'Cor': matches['HC'], 'CorA': matches['AC'],
+        'elo': elo_h, 'opp_elo': elo_a, 'elo_post': elo_h_post,
+        'Result': matches['FTR'].map({'H': 2, 'D': 1, 'A': 0}),
+    })
+    away = pd.DataFrame({
+        'Date': matches['Date'], 'Season': matches['Season'],
+        'Team': matches['AwayTeam'], 'Opponent': matches['HomeTeam'],
+        'is_home': 0,
+        'GF': matches['FTAG'], 'GA': matches['FTHG'],
+        'SoT': matches['AST'], 'SoTA': matches['HST'],
+        'Cor': matches['AC'], 'CorA': matches['HC'],
+        'elo': elo_a, 'opp_elo': elo_h, 'elo_post': elo_a_post,
+        'Result': matches['FTR'].map({'H': 0, 'D': 1, 'A': 2}),
+    })
+    df = pd.concat([home, away], ignore_index=True).sort_values(['Team', 'Date'])
+    df['elo_diff'] = df['elo'] - df['opp_elo']
 
-    df['xG_diff'] = df['xG'] - df['xGA']
-    df['Result'] = df['Result'].map({'W': 2, 'D': 1, 'L': 0})
+    # Short-term form: last 5 matches.
+    roll_cols = ['GF', 'GA', 'SoT', 'SoTA', 'Cor', 'CorA', 'Result']
+    for col in roll_cols:
+        df[f'Recent_{col}_avg5'] = (
+            df.groupby('Team')[col]
+              .transform(lambda s: s.shift(1).rolling(5).mean())
+        )
 
-    roll_cols = ['GF','GA','SoT','FK','PK','xG_diff','Result']
-    df = df.groupby('Team').apply(lambda x: add_rolling_stats(x, roll_cols, 5, 'Recent'))
+    # Long-term strength proxy: last 20 matches. min_periods lets newly
+    # promoted teams get a value once they have played 5 games.
+    df['Recent_Result_avg20'] = (
+        df.groupby('Team')['Result']
+          .transform(lambda s: s.shift(1).rolling(20, min_periods=5).mean())
+    )
 
-    df = df.reset_index(drop=True)
+    # Exponentially weighted form: recent matches count more than older ones.
+    df['Recent_Result_ewm'] = (
+        df.groupby('Team')['Result']
+          .transform(lambda s: s.shift(1).ewm(halflife=5, min_periods=3).mean())
+    )
 
-    df['Draw_rate_3'] = (
-    df.groupby('Team')['Result'] 
-    .apply(lambda x: 
-        x.shift(1).rolling(window = 3)
-        .apply(lambda y: (y == 1).mean())
-        ).reset_index(level = 0, drop = True)
-    ) 
-    df['Last_match_draw'] = df.groupby('Team')['Result'].shift(1).eq(1).astype(int)
+    # Venue-specific form: home form when at home, away form when away.
+    df['Recent_Result_venue_avg5'] = (
+        df.groupby(['Team', 'is_home'])['Result']
+          .transform(lambda s: s.shift(1).rolling(5, min_periods=3).mean())
+    )
 
-    df = df.sort_values(['Team','Opponent','Date'])
-    df['h2h_record'] = (df.groupby(['Team', 'Opponent'])['Result']
-                          .apply(lambda x: x.shift(1).rolling(2).mean())
-                          .reset_index(level=[0, 1], drop=True)
-                          .fillna(0))
-    print(df.columns)
-    return df
+    # Shots-on-target ratio: share of on-target shots in the team's matches
+    # (a linear model cannot form this ratio from the parts by itself).
+    df['SoT_ratio5'] = (
+        df['Recent_SoT_avg5']
+        / (df['Recent_SoT_avg5'] + df['Recent_SoTA_avg5'])
+    ).fillna(0.5)
 
+    df['days_rest'] = (
+        df.groupby('Team')['Date'].diff().dt.days.clip(upper=21).fillna(7)
+    )
 
-def add_rolling_stats(df, cols, window, prefix):
-    roll = df[cols].shift(1).rolling(window).mean()
-    roll.columns = [f"{prefix}_{col}_avg{window}" for col in cols]
-    return pd.concat([df, roll], axis=1)
+    # The opponent's form on the same date — each match has a row for both
+    # sides, so a self-merge attaches the opposing team's pre-match form.
+    form_cols = ([f'Recent_{c}_avg5' for c in roll_cols]
+                 + ['Recent_Result_avg20', 'Recent_Result_ewm',
+                    'Recent_Result_venue_avg5', 'SoT_ratio5', 'days_rest'])
+    opp_form = df[['Team', 'Date'] + form_cols].rename(
+        columns={'Team': 'Opponent', **{c: f'opp_{c}' for c in form_cols}}
+    )
+    df = df.merge(opp_form, on=['Opponent', 'Date'], how='left')
+    df['rest_diff'] = df['days_rest'] - df['opp_days_rest']
+
+    # h2h_record is a rolling mean of Result (0=L, 1=D, 2=W), so missing
+    # history must be filled with the neutral value 1.0 — filling with 0
+    # would claim the team lost its recent meetings.
+    df = df.sort_values(['Team', 'Opponent', 'Date'])
+    df['h2h_record'] = (
+        df.groupby(['Team', 'Opponent'])['Result']
+          .transform(lambda s: s.shift(1).rolling(2).mean())
+          .fillna(1.0)
+    )
+
+    return df.sort_values('Date').reset_index(drop=True)
