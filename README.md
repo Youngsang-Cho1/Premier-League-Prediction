@@ -120,10 +120,13 @@ tests → ingest → evaluate → drift check → conditional retrain (gated) �
 1. **Ingest** — refresh `data/matches.csv`.
 2. **Evaluate** (`src/evaluate.py`) — score the *deployed* model on matches
    played in the last 60 days against real results, and against the
-   **vig-removed B365 odds baseline**. Every run appends a row to
-   `metrics/history.csv`, so model quality (and the gap to the market) is
-   tracked over time. Football gives real ground truth within days — a luxury
-   most ML projects don't have.
+   **vig-removed B365 odds baseline**. Reports log-loss, accuracy, and
+   **RPS (Ranked Probability Score)** — the football-standard metric that,
+   unlike log-loss, respects outcome ordering (predicting Draw when the
+   result was a Win is penalized less than predicting a Loss). Every run
+   appends a row to `metrics/history.csv`, so model quality (and the gap to
+   the market) is tracked over time. Football gives real ground truth within
+   days — a luxury most ML projects don't have.
 3. **Drift check** (`src/drift.py`) — see below. Writes
    `metrics/drift_latest.json`.
 4. **Conditional retrain** (`src/pipeline.py`) — retraining is triggered by

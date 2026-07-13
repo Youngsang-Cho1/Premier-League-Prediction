@@ -18,13 +18,32 @@ from src.train_model import feature_cols
 HISTORY_PATH = 'metrics/history.csv'
 
 
+def ranked_probability_score(y_true, proba):
+    """Mean RPS over ordered outcomes L < D < W.
+
+    RPS is the football-standard scoring rule: it squares the error between
+    cumulative predicted and actual probabilities, so predicting a Draw when
+    the result was a Win is penalized less than predicting a Loss — because
+    Draw is 'closer' on the ordinal scale. Log-loss, by contrast, ignores
+    that ordering. Lower is better; a perfect forecast scores 0.
+    """
+    proba = np.asarray(proba, dtype=float)
+    cum_pred = np.cumsum(proba, axis=1)
+    onehot = np.zeros_like(proba)
+    onehot[np.arange(len(y_true)), np.asarray(y_true)] = 1.0
+    cum_true = np.cumsum(onehot, axis=1)
+    # divide by (categories - 1) so RPS stays in [0, 1]
+    return float(np.mean(np.sum((cum_pred - cum_true) ** 2, axis=1)) / (proba.shape[1] - 1))
+
+
 def score_model(model, rows):
-    """Log-loss and accuracy of `model` on prepared home-perspective rows."""
+    """Log-loss, accuracy and RPS of `model` on prepared home rows."""
     X = rows[feature_cols]
     y = rows['Result'].astype(int)
     proba = model.predict_proba(X)
     return (log_loss(y, proba, labels=[0, 1, 2]),
-            accuracy_score(y, proba.argmax(1)))
+            accuracy_score(y, proba.argmax(1)),
+            ranked_probability_score(y.to_numpy(), proba))
 
 
 def odds_baseline(raw, rows):
@@ -35,12 +54,27 @@ def odds_baseline(raw, rows):
                      right_on=['Date', 'Team', 'Opponent'])
     odds = odds.dropna(subset=['B365H', 'B365D', 'B365A'])
     if odds.empty:
-        return None, None
+        return None, None, None
     inv = np.column_stack([1 / odds['B365A'], 1 / odds['B365D'], 1 / odds['B365H']])
     proba = inv / inv.sum(axis=1, keepdims=True)
     y = odds['FTR'].map({'A': 0, 'D': 1, 'H': 2}).astype(int)
     return (log_loss(y, proba, labels=[0, 1, 2]),
-            accuracy_score(y, proba.argmax(1)))
+            accuracy_score(y, proba.argmax(1)),
+            ranked_probability_score(y.to_numpy(), proba))
+
+
+def _append_history(record):
+    """Append one evaluation record to the history CSV, tolerant of schema
+    changes: if new metric columns are added over time, older rows are
+    reconciled by union of columns rather than silently misaligning."""
+    os.makedirs(os.path.dirname(HISTORY_PATH), exist_ok=True)
+    new = pd.DataFrame([record])
+    if os.path.exists(HISTORY_PATH):
+        old = pd.read_csv(HISTORY_PATH)
+        combined = pd.concat([old, new], ignore_index=True)
+    else:
+        combined = new
+    combined.to_csv(HISTORY_PATH, index=False)
 
 
 def evaluation_rows(df, window_days):
@@ -63,8 +97,8 @@ def main(window_days=60, model_path='premier_model.pkl',
         return None
 
     model = joblib.load(model_path)
-    model_ll, model_acc = score_model(model, rows)
-    odds_ll, odds_acc = odds_baseline(raw, rows)
+    model_ll, model_acc, model_rps = score_model(model, rows)
+    odds_ll, odds_acc, odds_rps = odds_baseline(raw, rows)
 
     record = {
         'run_date': pd.Timestamp.now().strftime('%Y-%m-%d'),
@@ -74,19 +108,20 @@ def main(window_days=60, model_path='premier_model.pkl',
         'last_match': rows['Date'].max().strftime('%Y-%m-%d'),
         'model_logloss': round(model_ll, 4),
         'model_acc': round(model_acc, 4),
+        'model_rps': round(model_rps, 4),
         'odds_logloss': round(odds_ll, 4) if odds_ll is not None else None,
         'odds_acc': round(odds_acc, 4) if odds_acc is not None else None,
+        'odds_rps': round(odds_rps, 4) if odds_rps is not None else None,
     }
 
-    os.makedirs(os.path.dirname(HISTORY_PATH), exist_ok=True)
-    pd.DataFrame([record]).to_csv(
-        HISTORY_PATH, mode='a', index=False,
-        header=not os.path.exists(HISTORY_PATH))
+    _append_history(record)
 
     print(f"Evaluated {record['n_matches']} matches "
           f"({record['first_match']} ~ {record['last_match']})")
-    print(f"  model: logloss={record['model_logloss']} acc={record['model_acc']}")
-    print(f"  odds : logloss={record['odds_logloss']} acc={record['odds_acc']}")
+    print(f"  model: logloss={record['model_logloss']} "
+          f"rps={record['model_rps']} acc={record['model_acc']}")
+    print(f"  odds : logloss={record['odds_logloss']} "
+          f"rps={record['odds_rps']} acc={record['odds_acc']}")
     return record
 
 

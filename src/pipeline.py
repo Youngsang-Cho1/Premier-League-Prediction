@@ -49,8 +49,8 @@ def gate(candidate_path, incumbent_path):
     if rows.empty:
         print('Gate window empty — keeping incumbent.')
         return False
-    cand_ll, _ = evaluate.score_model(joblib.load(candidate_path), rows)
-    inc_ll, _ = evaluate.score_model(joblib.load(incumbent_path), rows)
+    cand_ll, _, _ = evaluate.score_model(joblib.load(candidate_path), rows)
+    inc_ll, _, _ = evaluate.score_model(joblib.load(incumbent_path), rows)
     print(f'Gate ({len(rows)} matches): candidate {cand_ll:.4f} '
           f'vs incumbent {inc_ll:.4f}')
     return cand_ll < inc_ll
