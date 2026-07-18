@@ -60,3 +60,35 @@ def test_metrics_api_returns_backtest(client):
     assert len(data['backtest']) >= 1
     row = data['backtest'][0]
     assert 'season' in row and 'model_rps' in row and 'odds_rps' in row
+
+
+def test_stats_page_serves(client):
+    resp = client.get('/stats')
+    assert resp.status_code == 200
+
+
+def test_schedule_page_serves(client):
+    resp = client.get('/schedule')
+    assert resp.status_code == 200
+
+
+def test_api_stats_returns_real_data(client):
+    resp = client.get('/api/stats')
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert len(data['kpis']) == 4
+    assert len(data['xpoints']['table']) == 20
+    # xPoints rows carry real computed fields
+    row = data['xpoints']['table'][0]
+    assert {'team', 'points', 'xpoints', 'diff'} <= set(row)
+
+
+def test_api_schedule_returns_fixtures(client):
+    resp = client.get('/api/schedule')
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert 'fixtures' in data and 'is_past' in data
+    # off-season falls back to recent played matches, but never empty here
+    assert len(data['fixtures']) >= 1
+    fx = data['fixtures'][0]
+    assert 'home' in fx and 'away' in fx

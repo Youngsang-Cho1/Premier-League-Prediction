@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>xPoints | Premier League Match Predictor</title>
+    <title>xPoints | Predict by Schedule</title>
     <meta name="theme-color" content="#0d1117">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -29,7 +29,7 @@
         <p class="intro-skip">Click anywhere or press any key to skip</p>
     </div>
 
-    <div class="hero-flex" id="mainApp" style="opacity: 0; display: none;">
+    <div class="hero-flex" id="mainApp" data-display="flex" style="opacity: 0; display: none;">
         <div class="hero-panel">
             <div class="app-stripe"></div>
             <div class="crest-grid">
@@ -50,6 +50,12 @@
             <div class="hero-crest"></div>
             <h1 class="hero-title">x<span>Points</span></h1>
             <p class="hero-tag">Premier League match prediction, measured against the market.</p>
+            <nav class="hero-nav">
+                <a href="/" class="hero-nav-link">Predict</a>
+                <a href="/stats" class="hero-nav-link">Stats</a>
+                <a href="/schedule" class="hero-nav-link active">Fixtures</a>
+                <a href="/dashboard" class="hero-nav-link">Dashboard</a>
+            </nav>
         </div>
 
         <div class="app-panel">
@@ -57,10 +63,10 @@
             <div class="app-ring"></div>
 
             <main>
-            <div id="selectionArea">
-                <div class="instructions"><i class="fas fa-bullseye"></i> Select two teams — first pick plays at HOME, second AWAY</div>
-                <div class="team-grid" id="teamGrid"></div>
-                <button id="predictBtn" class="primary-btn" disabled>Analyze Matchup</button>
+            <div id="scheduleArea">
+                <div class="instructions"><i class="fas fa-calendar-days"></i> Pick a fixture to run the matchup instantly</div>
+                <div class="schedule-meta-heading" id="scheduleBanner">Loading fixtures&hellip;</div>
+                <div class="fixture-list" id="fixtureList"></div>
             </div>
 
             <div id="loading" class="hidden">
@@ -115,7 +121,7 @@
                     </div>
                 </div>
 
-                <button id="resetBtn" class="secondary-btn">New Simulation</button>
+                <button id="resetBtn" class="secondary-btn">Back to Schedule</button>
             </div>
             </main>
 
@@ -134,6 +140,7 @@
         </div>
     </div>
 
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script src="{{ url_for('static', filename='common.js') }}"></script>
+    <script src="{{ url_for('static', filename='schedule.js') }}"></script>
 </body>
 </html>

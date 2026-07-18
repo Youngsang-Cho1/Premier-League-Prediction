@@ -39,3 +39,6 @@ instance/
 
 # MLOps pipeline temp artifact
 candidate_model.pkl
+
+# Claude Code local files
+.claude/

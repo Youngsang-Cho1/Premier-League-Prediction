@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>xPoints | Model Stats</title>
+    <meta name="theme-color" content="#0d1117">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+</head>
+<body>
+
+    <div class="pitch-arc"></div>
+
+    <div id="introLayer" class="intro-layer">
+        <div class="intro-glow"></div>
+        <div class="intro-crest">
+            <img src="{{ url_for('static', filename='images/pl-logo-mark.png') }}" alt="">
+        </div>
+        <h1 class="intro-text">
+            <span class="intro-pre">Welcome to</span>
+            <span class="intro-main"><span>x</span><span class="intro-iq">Points</span></span>
+        </h1>
+        <div class="intro-line"></div>
+        <p class="intro-tagline">Premier League match prediction, measured against the market.</p>
+        <p class="intro-skip">Click anywhere or press any key to skip</p>
+    </div>
+
+    <div class="hero-flex" id="mainApp" data-display="flex" style="opacity: 0; display: none;">
+        <div class="hero-panel">
+            <div class="app-stripe"></div>
+            <div class="crest-grid">
+                <img src="{{ url_for('static', filename='images/Arsenal-logo.png') }}" alt="">
+                <img src="{{ url_for('static', filename='images/Chelsea-logo.png') }}" alt="">
+                <img src="{{ url_for('static', filename='images/Liverpool-logo.png') }}" alt="">
+                <img src="{{ url_for('static', filename='images/Manchester-City-logo.png') }}" alt="">
+                <img src="{{ url_for('static', filename='images/Manchester-Utd-logo.png') }}" alt="">
+                <img src="{{ url_for('static', filename='images/Tottenham-logo.png') }}" alt="">
+                <img src="{{ url_for('static', filename='images/Newcastle-Utd-logo.png') }}" alt="">
+                <img src="{{ url_for('static', filename='images/Everton-logo.png') }}" alt="">
+                <img src="{{ url_for('static', filename='images/West-Ham-logo.png') }}" alt="">
+                <img src="{{ url_for('static', filename='images/Wolves-logo.png') }}" alt="">
+                <img src="{{ url_for('static', filename='images/Brighton-logo.png') }}" alt="">
+                <img src="{{ url_for('static', filename='images/Aston-Villa-logo.png') }}" alt="">
+            </div>
+            <div class="hero-glow"></div>
+            <div class="hero-crest"></div>
+            <h1 class="hero-title">x<span>Points</span></h1>
+            <p class="hero-tag">Premier League match prediction, measured against the market.</p>
+            <nav class="hero-nav">
+                <a href="/" class="hero-nav-link">Predict</a>
+                <a href="/stats" class="hero-nav-link active">Stats</a>
+                <a href="/schedule" class="hero-nav-link">Fixtures</a>
+                <a href="/dashboard" class="hero-nav-link">Dashboard</a>
+            </nav>
+        </div>
+
+        <div class="app-panel">
+            <div class="app-stripe"></div>
+            <div class="app-ring"></div>
+
+            <main>
+            <div id="statsArea">
+                <div class="instructions"><i class="fas fa-chart-line"></i> Model performance, measured against the market</div>
+
+                <div class="stat-strip" id="statStrip"></div>
+
+                <div class="analysis-grid">
+                    <div class="chart-card">
+                        <h4><i class="fas fa-wave-square"></i> Accuracy by Gameweek</h4>
+                        <div class="chart-wrapper">
+                            <canvas id="accuracyChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <h4><i class="fas fa-scale-balanced"></i> Model vs Market Favorite</h4>
+                        <div class="chart-wrapper">
+                            <canvas id="marketChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-card">
+                    <h4><i class="fas fa-table-list"></i> xPoints League Table</h4>
+                    <p class="table-sub">Actual points vs. model-expected points through Gameweek 10</p>
+                    <div class="table-scroll">
+                        <table class="xpoints-table" id="xpointsTable">
+                            <thead>
+                                <tr>
+                                    <th class="num">#</th>
+                                    <th>Team</th>
+                                    <th class="num">Pld</th>
+                                    <th class="num">Pts</th>
+                                    <th class="num">xPoints</th>
+                                    <th class="num">Diff</th>
+                                </tr>
+                            </thead>
+                            <tbody id="xpointsBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="table-card">
+                    <h4><i class="fas fa-clock-rotate-left"></i> Recent Predictions</h4>
+                    <div class="pred-log-list" id="predLog"></div>
+                </div>
+            </div>
+            </main>
+
+            <footer>
+                <p>&copy; 2024 Aiden Cho &middot; <a href="/dashboard">Model Dashboard</a></p>
+            </footer>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='common.js') }}"></script>
+    <script src="{{ url_for('static', filename='stats.js') }}"></script>
+</body>
+</html>

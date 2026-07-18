@@ -4,7 +4,9 @@ from src.infer import (predict_matches_bidirectional, get_matchup_insights,
 import csv
 import os
 
-app = Flask(__name__)
+app = Flask(__name__,
+            template_folder='frontend/templates',
+            static_folder='frontend/static')
 
 BACKTEST_PATH = 'metrics/backtest.csv'
 HISTORY_PATH = 'metrics/history.csv'
@@ -15,6 +17,15 @@ def _read_csv(path):
         return []
     with open(path) as f:
         return list(csv.DictReader(f))
+
+
+def _num(row, key):
+    """Parse a CSV string field to float, or None if missing/blank."""
+    v = row.get(key)
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return None
 
 
 @app.route('/')
@@ -35,6 +46,117 @@ def metrics():
         'backtest': _read_csv(BACKTEST_PATH),
         'history': _read_csv(HISTORY_PATH),
     })
+
+
+@app.route('/stats')
+def stats():
+    return render_template('stats.html')
+
+
+@app.route('/schedule')
+def schedule():
+    return render_template('schedule.html')
+
+
+@app.route('/api/stats')
+def api_stats():
+    """Real model-performance data for the stats page, derived from the
+    season backtest and the xPoints table — no placeholders."""
+    from src.xpoints import compute_xpoints
+
+    bt = _read_csv(BACKTEST_PATH)
+    xpoints_table, xp_season = compute_xpoints()
+
+    kpis, season_trend, market_compare = [], [], {}
+    if bt:
+        latest = bt[-1]
+        seasons = [r['season'] for r in bt]
+        model_acc = [_num(r, 'model_acc') for r in bt]
+        model_rps = [_num(r, 'model_rps') for r in bt]
+        odds_rps = [_num(r, 'odds_rps') for r in bt]
+
+        # RPS edge over the market, averaged (lower RPS is better, so the
+        # model's edge is odds_rps - model_rps when positive)
+        edges = [o - m for o, m in zip(odds_rps, model_rps)
+                 if o is not None and m is not None]
+        avg_edge = sum(edges) / len(edges) if edges else 0.0
+        total_matches = sum(int(_num(r, 'n_matches') or 0) for r in bt)
+
+        kpis = [
+            {'value': f"{(_num(latest, 'model_acc') or 0) * 100:.1f}%",
+             'label': 'Latest-season accuracy',
+             'delta': f"{latest['season']} test season", 'trend': ''},
+            {'value': str(total_matches),
+             'label': 'Matches backtested',
+             'delta': f"across {len(bt)} seasons", 'trend': ''},
+            {'value': f"{_num(latest, 'model_rps') or 0:.3f}",
+             'label': 'Latest-season RPS',
+             'delta': 'lower is better', 'trend': ''},
+            {'value': f"{avg_edge:+.4f}",
+             'label': 'Avg RPS edge vs market',
+             'delta': 'vs Bet365 odds',
+             'trend': 'pos' if avg_edge >= 0 else 'neg'},
+        ]
+        season_trend = [
+            {'season': s, 'model_acc': a, 'model_rps': r}
+            for s, a, r in zip(seasons, model_acc, model_rps)
+        ]
+        market_compare = {
+            'seasons': seasons,
+            'model_rps': model_rps,
+            'odds_rps': odds_rps,
+        }
+
+    return jsonify({
+        'kpis': kpis,
+        'season_trend': season_trend,
+        'market_compare': market_compare,
+        'xpoints': {'season': xp_season, 'table': xpoints_table},
+        'recent_predictions': _recent_predictions(),
+    })
+
+
+def _recent_predictions(n=6):
+    """Model predictions on the most recent played matches, checked against
+    the actual result — the 'hit' flag is real, not fabricated."""
+    from src.xpoints import _season_home_rows
+    from src.infer import _MODEL
+    from src.train_model import feature_cols
+    import numpy as np
+
+    rows, _ = _season_home_rows()
+    if rows.empty:
+        return []
+    rows = rows.sort_values('Date').tail(n)
+    proba = _MODEL.predict_proba(rows[feature_cols])  # [L, D, W] for home
+    labels = ['Away Win', 'Draw', 'Home Win']
+
+    out = []
+    for i, r in enumerate(rows.itertuples()):
+        pick_idx = int(proba[i].argmax())
+        actual = int(r.Result)  # 0=L,1=D,2=W from home perspective
+        home, away = r.Team, r.Opponent
+        pick_name = (home + ' Win' if pick_idx == 2
+                     else away + ' Win' if pick_idx == 0 else 'Draw')
+        out.append({
+            'date': r.Date.strftime('%b %d'),
+            'home': home, 'away': away,
+            'pick': pick_name,
+            'conf': int(round(proba[i][pick_idx] * 100)),
+            'score': f"{int(r.GF)}-{int(r.GA)}",
+            'hit': pick_idx == actual,
+        })
+    return list(reversed(out))
+
+
+@app.route('/api/schedule')
+def api_schedule():
+    """Upcoming fixtures from the FPL API. Off-season (no future fixtures),
+    falls back to the most recent played round from our own data so the page
+    is never empty."""
+    from src.schedule_feed import upcoming_fixtures
+    fixtures, is_past = upcoming_fixtures()
+    return jsonify({'fixtures': fixtures, 'is_past': is_past})
 
 @app.route('/predict', methods=['POST'])
 def predict():

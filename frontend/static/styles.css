@@ -275,6 +275,40 @@ a:hover { color: #fff; text-decoration: underline; }
     line-height: 1.5;
 }
 
+.hero-nav {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 28px;
+}
+
+.hero-nav-link {
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    color: rgba(255, 255, 255, 0.62);
+    padding: 7px 15px;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.04);
+    transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.hero-nav-link:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.09);
+    border-color: rgba(255, 255, 255, 0.28);
+    text-decoration: none;
+}
+
+.hero-nav-link.active {
+    color: var(--pl-purple-deep);
+    background: var(--pl-lilac);
+    border-color: var(--pl-lilac);
+}
+
 /* ==========================================================================
    5. APP PANEL
    ========================================================================== */

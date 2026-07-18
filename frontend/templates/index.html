@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>xPoints | Premier League Match Predictor</title>
+    <meta name="theme-color" content="#0d1117">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+</head>
+<body>
+
+    <div class="pitch-arc"></div>
+
+    <div id="introLayer" class="intro-layer">
+        <div class="intro-glow"></div>
+        <div class="intro-crest">
+            <img src="{{ url_for('static', filename='images/pl-logo-mark.png') }}" alt="">
+        </div>
+        <h1 class="intro-text">
+            <span class="intro-pre">Welcome to</span>
+            <span class="intro-main"><span>x</span><span class="intro-iq">Points</span></span>
+        </h1>
+        <div class="intro-line"></div>
+        <p class="intro-tagline">Premier League match prediction, measured against the market.</p>
+        <p class="intro-skip">Click anywhere or press any key to skip</p>
+    </div>
+
+    <div class="hero-flex" id="mainApp" data-display="flex" style="opacity: 0; display: none;">
+        <div class="hero-panel">
+            <div class="app-stripe"></div>
+            <div class="crest-grid">
+                <img src="{{ url_for('static', filename='images/Arsenal-logo.png') }}" alt="">
+                <img src="{{ url_for('static', filename='images/Chelsea-logo.png') }}" alt="">
+                <img src="{{ url_for('static', filename='images/Liverpool-logo.png') }}" alt="">
+                <img src="{{ url_for('static', filename='images/Manchester-City-logo.png') }}" alt="">
+                <img src="{{ url_for('static', filename='images/Manchester-Utd-logo.png') }}" alt="">
+                <img src="{{ url_for('static', filename='images/Tottenham-logo.png') }}" alt="">
+                <img src="{{ url_for('static', filename='images/Newcastle-Utd-logo.png') }}" alt="">
+                <img src="{{ url_for('static', filename='images/Everton-logo.png') }}" alt="">
+                <img src="{{ url_for('static', filename='images/West-Ham-logo.png') }}" alt="">
+                <img src="{{ url_for('static', filename='images/Wolves-logo.png') }}" alt="">
+                <img src="{{ url_for('static', filename='images/Brighton-logo.png') }}" alt="">
+                <img src="{{ url_for('static', filename='images/Aston-Villa-logo.png') }}" alt="">
+            </div>
+            <div class="hero-glow"></div>
+            <div class="hero-crest"></div>
+            <h1 class="hero-title">x<span>Points</span></h1>
+            <p class="hero-tag">Premier League match prediction, measured against the market.</p>
+            <nav class="hero-nav">
+                <a href="/" class="hero-nav-link active">Predict</a>
+                <a href="/stats" class="hero-nav-link">Stats</a>
+                <a href="/schedule" class="hero-nav-link">Fixtures</a>
+                <a href="/dashboard" class="hero-nav-link">Dashboard</a>
+            </nav>
+        </div>
+
+        <div class="app-panel">
+            <div class="app-stripe"></div>
+            <div class="app-ring"></div>
+
+            <main>
+            <div id="selectionArea">
+                <div class="instructions"><i class="fas fa-bullseye"></i> Select two teams — first pick plays at HOME, second AWAY</div>
+                <div class="team-grid" id="teamGrid"></div>
+                <button id="predictBtn" class="primary-btn" disabled>Analyze Matchup</button>
+            </div>
+
+            <div id="loading" class="hidden">
+                <div class="loader-content">
+                    <div class="spinner"></div>
+                    <p>Crunching match history and form factors...</p>
+                </div>
+            </div>
+
+            <div id="resultArea" class="hidden">
+                <div class="matchup-header">
+                    <div class="team-meta team1-meta">
+                        <img id="team1Image" alt="">
+                        <h3 id="team1NameText">Team 1</h3>
+                        <span class="venue-tag home">HOME</span>
+                    </div>
+                    <div class="vs-badge-wrap">
+                        <div class="vs-badge">VS</div>
+                        <div id="scorelineTag" class="scoreline-tag hidden"></div>
+                    </div>
+                    <div class="team-meta team2-meta">
+                        <img id="team2Image" alt="">
+                        <h3 id="team2NameText">Team 2</h3>
+                        <span class="venue-tag away">AWAY</span>
+                    </div>
+                </div>
+
+                <div class="analysis-grid">
+                    <div class="result-card">
+                        <h4><i class="fas fa-bullseye"></i> AI Prediction</h4>
+                        <div id="result" class="prediction-text"></div>
+                    </div>
+                    <div class="chart-card">
+                        <h4><i class="fas fa-chart-pie"></i> Winning Probabilities</h4>
+                        <div class="chart-wrapper">
+                            <canvas id="probabilityChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="insightsArea" class="matchup-insights-container">
+                    <div class="insight-card">
+                        <h5><i class="fas fa-percent"></i> Historical Draw Rate</h5>
+                        <div class="draw-rate-display">
+                            <div id="drawRateValue" class="draw-rate-value">--%</div>
+                            <div id="drawRateContext" class="draw-rate-label">Based on matchup history</div>
+                        </div>
+                    </div>
+                    <div class="insight-card">
+                        <h5><i class="fas fa-clock-rotate-left"></i> Recent H2H History</h5>
+                        <div id="h2hHistoryList" class="h2h-history-list"></div>
+                    </div>
+                </div>
+
+                <button id="resetBtn" class="secondary-btn">New Simulation</button>
+            </div>
+            </main>
+
+            <footer>
+                <p>&copy; 2024 Aiden Cho &middot; <a href="/dashboard">Model Dashboard</a></p>
+            </footer>
+        </div>
+    </div>
+
+    <div id="popupModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-icon" id="modalIcon"></div>
+            <h2 id="modalTitle">Alert</h2>
+            <p id="modalMessage">Message content goes here.</p>
+            <button id="modalCloseBtn" class="primary-btn small-btn">Okay</button>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='common.js') }}"></script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
