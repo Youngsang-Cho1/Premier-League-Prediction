@@ -248,18 +248,33 @@ premier-prediction/
 │   ├── preprocessor.py        # Leakage-safe feature engineering (rolling, Elo)
 │   ├── train_model.py         # Tuning, calibration, model selection
 │   ├── infer.py               # Feature assembly + prediction for the app
+│   ├── xpoints.py             # Expected-points table (real pts vs model xP)
+│   ├── schedule_feed.py       # Upcoming fixtures (FPL API + off-season fallback)
 │   ├── evaluate.py            # Weekly scoring vs real results & odds baseline
 │   ├── drift.py               # PSI drift detection
 │   └── pipeline.py            # Orchestration + retrain gate
-├── tests/                     # Anti-leakage, API, and data-schema tests
+├── frontend/
+│   ├── templates/             # index (predict), stats, schedule, dashboard
+│   └── static/                # common.js + per-page JS, styles.css, team logos
+├── tests/                     # Anti-leakage, API, xPoints, and schema tests
 ├── .github/workflows/
 │   ├── ci.yml                 # Tests on every push/PR
 │   └── weekly-pipeline.yml    # Scheduled continuous-training pipeline
-├── static/ · templates/       # Frontend (JS/CSS, team logos, HTML)
 ├── notebooks/                 # Archive: original FBref scraping & prototyping
 ├── Dockerfile · render.yaml   # Deployment
 └── requirements.txt
 ```
+
+### Pages
+
+- **`/`** — the predictor: pick two teams, get calibrated W/D/L probabilities,
+  a predicted scoreline, and head-to-head history.
+- **`/stats`** — model performance on real data: KPIs, accuracy/RPS by season,
+  model-vs-market, and an **xPoints league table** (each team's actual points
+  vs the points the model expected).
+- **`/schedule`** — upcoming fixtures (FPL API; off-season shows the most
+  recent completed round), each clickable to run a live prediction.
+- **`/dashboard`** — the walk-forward season backtest, model vs the market.
 
 ---
 
