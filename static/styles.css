@@ -775,6 +775,17 @@ footer p {
     font-weight: 500;
 }
 
+.dashboard-link {
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 600;
+    transition: opacity 0.2s;
+}
+
+.dashboard-link:hover {
+    opacity: 0.75;
+}
+
 #resetBtn {
     display: block !important;
     margin: 40px auto 0 !important;

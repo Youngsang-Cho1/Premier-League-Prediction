@@ -15,7 +15,7 @@ import shutil
 import sys
 import joblib
 import pandas as pd
-from src import ingest, evaluate, drift, train_model
+from src import ingest, evaluate, drift, train_model, backtest
 from src.preprocessor import load_and_clean
 from src.train_model import feature_cols
 
@@ -80,6 +80,9 @@ def main(check_only=False):
     if gate(CANDIDATE_PATH, MODEL_PATH):
         shutil.move(CANDIDATE_PATH, MODEL_PATH)
         print('Candidate wins — deployed as new model.')
+        # Refresh the season backtest that powers the dashboard, since the
+        # deployed model (and the data behind it) has changed.
+        backtest.main()
     else:
         os.remove(CANDIDATE_PATH)
         print('Candidate loses — incumbent kept.')

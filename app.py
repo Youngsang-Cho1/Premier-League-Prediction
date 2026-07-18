@@ -1,13 +1,40 @@
 from flask import Flask, request, jsonify, render_template
 from src.infer import (predict_matches_bidirectional, get_matchup_insights,
                        predict_scoreline)
+import csv
 import os
 
 app = Flask(__name__)
 
+BACKTEST_PATH = 'metrics/backtest.csv'
+HISTORY_PATH = 'metrics/history.csv'
+
+
+def _read_csv(path):
+    if not os.path.exists(path):
+        return []
+    with open(path) as f:
+        return list(csv.DictReader(f))
+
+
 @app.route('/')
 def home():
     return render_template('index.html')
+
+
+@app.route('/dashboard')
+def dashboard():
+    return render_template('dashboard.html')
+
+
+@app.route('/api/metrics')
+def metrics():
+    """Backtest (per-season, model vs market) and weekly evaluation history.
+    Powers the /dashboard charts; empty history is expected off-season."""
+    return jsonify({
+        'backtest': _read_csv(BACKTEST_PATH),
+        'history': _read_csv(HISTORY_PATH),
+    })
 
 @app.route('/predict', methods=['POST'])
 def predict():

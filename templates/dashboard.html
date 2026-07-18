@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Model Performance | Prem Predictor</title>
+  <style>
+    :root {
+      --surface: #0f1216; --panel: #171b21; --ink: #e8eaed; --ink-2: #9aa0a8;
+      --ink-3: #6b7178; --hair: #262b33; --grid: #21262e;
+      --model: #4C7EF3; --odds: #E8833A; --good: #34c98a;
+      --mono: ui-monospace, "SF Mono", Menlo, monospace;
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--surface); color: var(--ink);
+      font-family: var(--sans); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+    .wrap { max-width: 960px; margin: 0 auto; padding: 36px 24px 64px; }
+    a.back { color: var(--ink-2); text-decoration: none; font-size: .85rem; }
+    a.back:hover { color: var(--ink); }
+    h1 { font-size: 1.5rem; font-weight: 700; margin: 14px 0 4px; letter-spacing: -.01em; }
+    .sub { color: var(--ink-2); font-size: .92rem; margin: 0 0 4px; }
+    .method { color: var(--ink-3); font-size: .8rem; margin: 0; }
+
+    .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 26px 0; }
+    .tile { background: var(--panel); border: 1px solid var(--hair); border-radius: 12px;
+      padding: 16px 18px; }
+    .tile .label { font-size: .72rem; color: var(--ink-3); text-transform: uppercase;
+      letter-spacing: .05em; font-weight: 600; margin-bottom: 7px; }
+    .tile .big { font-size: 1.7rem; font-weight: 700; font-family: var(--mono);
+      letter-spacing: -.02em; line-height: 1; }
+    .tile .foot { font-size: .78rem; color: var(--ink-2); margin-top: 6px; }
+
+    .card { background: var(--panel); border: 1px solid var(--hair); border-radius: 12px;
+      padding: 20px 22px 14px; margin-bottom: 22px; }
+    .card h2 { font-size: 1rem; font-weight: 650; margin: 0 0 2px; }
+    .card .cap { font-size: .82rem; color: var(--ink-2); margin: 0 0 10px; }
+    .legend { display: flex; gap: 18px; margin: 2px 0 8px; font-size: .82rem; flex-wrap: wrap; }
+    .legend span { display: inline-flex; align-items: center; gap: 7px; color: var(--ink-2); }
+    .sw { width: 20px; height: 3px; border-radius: 2px; display: inline-block; }
+    .chart-scroll { overflow-x: auto; }
+    svg { display: block; width: 100%; min-width: 560px; height: auto; font-family: var(--sans); }
+    .gridline { stroke: var(--grid); stroke-width: 1; }
+    .axt { fill: var(--ink-3); font-size: 11px; }
+    .axl { fill: var(--ink-2); font-size: 11px; font-weight: 500; }
+    .dl { font-size: 10.5px; font-weight: 600; font-family: var(--mono); }
+
+    table { border-collapse: collapse; width: 100%; font-size: .84rem; margin-top: 4px; }
+    th, td { text-align: right; padding: 7px 9px; border-bottom: 1px solid var(--hair); }
+    th:first-child, td:first-child { text-align: left; }
+    th { color: var(--ink-3); font-weight: 600; font-size: .74rem; text-transform: uppercase;
+      letter-spacing: .04em; }
+    td { font-family: var(--mono); } td:first-child { font-family: var(--sans); }
+    .pill { display: inline-block; padding: 1px 7px; border-radius: 20px; font-size: .75rem;
+      font-weight: 600; background: rgba(52,201,138,.14); color: var(--good); }
+    .empty { color: var(--ink-3); font-size: .85rem; padding: 24px 0; text-align: center; }
+    .note { font-size: .8rem; color: var(--ink-3); margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <a class="back" href="/">← back to predictor</a>
+    <h1>Model Performance</h1>
+    <p class="sub">Walk-forward backtest: each season is predicted by a model trained only on prior seasons, then measured against the bookmaker market.</p>
+    <p class="method">RPS (Ranked Probability Score) and log-loss — lower is better. The market = vig-removed Bet365 odds.</p>
+
+    <div class="tiles" id="tiles"></div>
+
+    <div class="card">
+      <h2>RPS by season — model vs market</h2>
+      <p class="cap">The football-standard metric. The model shadows the market; the vertical gap is how much worse our probabilities are.</p>
+      <div class="legend">
+        <span><i class="sw" style="background:var(--model)"></i> Our model</span>
+        <span><i class="sw" style="background:var(--odds)"></i> Bookmaker market</span>
+      </div>
+      <div class="chart-scroll"><svg id="rpsChart" viewBox="0 0 900 360" role="img" aria-label="RPS per season, model vs market"></svg></div>
+    </div>
+
+    <div class="card">
+      <h2>Full backtest results</h2>
+      <p class="cap">Model auto-selected by log-loss each season (never hardcoded).</p>
+      <div class="chart-scroll"><table id="tbl"><thead><tr>
+        <th>Season</th><th>Model</th><th>RPS</th><th>Log-loss</th><th>Acc</th>
+        <th>Mkt RPS</th><th>Gap (RPS)</th>
+      </tr></thead><tbody></tbody></table></div>
+    </div>
+
+    <div class="card">
+      <h2>Weekly live evaluation</h2>
+      <p class="cap">Populated each week during the season by the automated pipeline, scoring the deployed model on freshly played matches.</p>
+      <div id="historyBody"></div>
+    </div>
+  </div>
+
+  <script>
+  const css = k => getComputedStyle(document.documentElement).getPropertyValue(k).trim();
+
+  fetch('/api/metrics').then(r => r.json()).then(d => {
+    renderTiles(d.backtest);
+    renderRps(d.backtest);
+    renderTable(d.backtest);
+    renderHistory(d.history);
+  });
+
+  function renderTiles(bt) {
+    if (!bt.length) return;
+    const gaps = bt.map(s => +s.model_rps - +s.odds_rps);
+    const avgGap = gaps.reduce((a, b) => a + b, 0) / gaps.length;
+    const beat = bt.filter(s => +s.model_rps <= +s.odds_rps).length;
+    const best = bt.reduce((a, b) => (+b.model_rps - +b.odds_rps) < (+a.model_rps - +a.odds_rps) ? b : a);
+    document.getElementById('tiles').innerHTML = `
+      <div class="tile"><div class="label">Seasons backtested</div><div class="big">${bt.length}</div><div class="foot">Walk-forward, ${bt[0].season}–${bt[bt.length-1].season}</div></div>
+      <div class="tile"><div class="label">Avg RPS gap to market</div><div class="big" style="color:var(--model)">+${avgGap.toFixed(4)}</div><div class="foot">How far behind Bet365, averaged</div></div>
+      <div class="tile"><div class="label">Best season vs market</div><div class="big" style="color:var(--good)">${best.season}</div><div class="foot">Closest to (or beating) the market</div></div>`;
+  }
+
+  function renderRps(bt) {
+    const svg = document.getElementById('rpsChart');
+    if (!bt.length) { svg.outerHTML = '<p class="empty">No backtest data.</p>'; return; }
+    const W = 900, H = 360, M = { t: 20, r: 88, b: 42, l: 52 };
+    const iw = W - M.l - M.r, ih = H - M.t - M.b;
+    const vals = bt.flatMap(s => [+s.model_rps, +s.odds_rps]);
+    const yMin = Math.floor(Math.min(...vals) * 100) / 100 - 0.005;
+    const yMax = Math.ceil(Math.max(...vals) * 100) / 100 + 0.005;
+    const x = i => M.l + iw * i / (bt.length - 1);
+    const y = v => M.t + ih * (1 - (v - yMin) / (yMax - yMin));
+    const Cm = css('--model'), Co = css('--odds'), Cs = css('--panel');
+    let s = '';
+    for (let k = 0; k <= 5; k++) {
+      const v = yMin + (yMax - yMin) * k / 5, yy = y(v).toFixed(1);
+      s += `<line class="gridline" x1="${M.l}" y1="${yy}" x2="${M.l+iw}" y2="${yy}"/>`;
+      s += `<text class="axt" x="${M.l-8}" y="${(+yy+3.5)}" text-anchor="end">${v.toFixed(3)}</text>`;
+    }
+    s += `<text class="axl" transform="translate(13,${M.t+ih/2}) rotate(-90)" text-anchor="middle">RPS (lower is better)</text>`;
+    bt.forEach((d, i) => s += `<text class="axt" x="${x(i).toFixed(1)}" y="${H-M.b+19}" text-anchor="middle">${d.season}</text>`);
+    const path = key => bt.map((d, i) => `${i?'L':'M'}${x(i).toFixed(1)},${y(+d[key]).toFixed(1)}`).join('');
+    s += `<path d="${path('odds_rps')}" fill="none" stroke="${Co}" stroke-width="2" stroke-linejoin="round"/>`;
+    s += `<path d="${path('model_rps')}" fill="none" stroke="${Cm}" stroke-width="2" stroke-linejoin="round"/>`;
+    bt.forEach((d, i) => {
+      s += `<circle cx="${x(i).toFixed(1)}" cy="${y(+d.odds_rps).toFixed(1)}" r="4" fill="${Co}" stroke="${Cs}" stroke-width="2"/>`;
+      s += `<circle cx="${x(i).toFixed(1)}" cy="${y(+d.model_rps).toFixed(1)}" r="4" fill="${Cm}" stroke="${Cs}" stroke-width="2"/>`;
+    });
+    const last = bt.length - 1;
+    s += `<text class="dl" x="${x(last)+9}" y="${(y(+bt[last].model_rps)+4).toFixed(1)}" fill="${Cm}">model</text>`;
+    s += `<text class="dl" x="${x(last)+9}" y="${(y(+bt[last].odds_rps)-6).toFixed(1)}" fill="${Co}">market</text>`;
+    svg.innerHTML = s;
+  }
+
+  function renderTable(bt) {
+    const tb = document.querySelector('#tbl tbody');
+    tb.innerHTML = bt.map(d => {
+      const gap = +d.model_rps - +d.odds_rps;
+      const gc = gap <= 0 ? `<td><span class="pill">beat ${gap.toFixed(4)}</span></td>`
+                          : `<td style="color:var(--ink-2)">+${gap.toFixed(4)}</td>`;
+      return `<tr><td>${d.season}</td><td style="font-family:var(--mono)">${d.model_pick}</td>
+        <td>${d.model_rps}</td><td>${d.model_logloss}</td><td>${(+d.model_acc*100).toFixed(1)}%</td>
+        <td>${d.odds_rps}</td>${gc}</tr>`;
+    }).join('');
+  }
+
+  function renderHistory(h) {
+    const el = document.getElementById('historyBody');
+    if (!h || !h.length) {
+      el.innerHTML = '<p class="empty">No weekly evaluations yet — the pipeline fills this in once the season is underway.</p>';
+      return;
+    }
+    el.innerHTML = `<div class="chart-scroll"><table><thead><tr>
+      <th>Run</th><th>Matches</th><th>Model RPS</th><th>Model LL</th><th>Odds RPS</th><th>Odds LL</th>
+      </tr></thead><tbody>${h.slice(-12).reverse().map(r => `<tr>
+        <td>${r.run_date}</td><td>${r.n_matches}</td><td>${r.model_rps ?? '–'}</td>
+        <td>${r.model_logloss}</td><td>${r.odds_rps ?? '–'}</td><td>${r.odds_logloss ?? '–'}</td>
+      </tr>`).join('')}</tbody></table></div>`;
+  }
+  </script>
+</body>
+</html>

@@ -43,3 +43,20 @@ def test_missing_field_is_400(client):
 def test_promoted_team_without_long_history_works(client):
     resp = client.post('/predict', json={'team1': 'Sunderland', 'team2': 'Manchester City'})
     assert resp.status_code == 200
+
+
+def test_dashboard_route_serves(client):
+    resp = client.get('/dashboard')
+    assert resp.status_code == 200
+    assert b'Model Performance' in resp.data
+
+
+def test_metrics_api_returns_backtest(client):
+    resp = client.get('/api/metrics')
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert 'backtest' in data and 'history' in data
+    # backtest.csv is committed, so it should have season rows
+    assert len(data['backtest']) >= 1
+    row = data['backtest'][0]
+    assert 'season' in row and 'model_rps' in row and 'odds_rps' in row
