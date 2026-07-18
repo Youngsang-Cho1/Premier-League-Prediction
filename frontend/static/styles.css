@@ -194,19 +194,22 @@ a:hover { color: #fff; text-decoration: underline; }
 /* ==========================================================================
    4. HERO LAYOUT
    ========================================================================== */
+/* Two independent panes side by side, each exactly one viewport tall.
+   The left rail never scrolls; only the right content pane does. */
 .hero-flex {
     position: relative;
-    display: block;
+    display: flex;
     width: 100%;
-    min-height: 100vh;
+    height: 100vh;
+    overflow: hidden;
 }
 
-/* Fixed branding sidebar — stays put while the content area scrolls. */
+/* Branding rail — fixed width, its own height, scrolling disabled.
+   position:relative so the absolutely-positioned crest-grid inside is
+   clipped to the rail (not the viewport). */
 .hero-panel {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: var(--sidebar-w);
+    position: relative;
+    flex: 0 0 var(--sidebar-w);
     height: 100vh;
     background: radial-gradient(circle at 30% 20%, #4a1150 0%, #1c0020 65%, #0f0012 100%);
     display: flex;
@@ -319,16 +322,26 @@ a:hover { color: #fff; text-decoration: underline; }
    ========================================================================== */
 .app-panel {
     position: relative;
-    margin-left: var(--sidebar-w);
     flex: 1;
-    display: flex;
-    flex-direction: column;
     min-width: 0;
-    min-height: 100vh;
-    background: linear-gradient(160deg, rgba(255,255,255,0.09), rgba(255,255,255,0.03));
-    backdrop-filter: blur(20px);
+    height: 100vh;
+    overflow-y: auto;
+    /* Opaque so the page-wide crest watermark (body::before) never bleeds
+       through and washes out the content. */
+    background:
+        linear-gradient(160deg, rgba(255,255,255,0.055), rgba(255,255,255,0.02)),
+        linear-gradient(160deg, #241033, #1a0b26);
     padding: 48px 44px;
 }
+
+/* Slim scrollbar for the content pane, matching the theme. */
+.app-panel::-webkit-scrollbar { width: 8px; }
+.app-panel::-webkit-scrollbar-track { background: transparent; }
+.app-panel::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+}
+.app-panel::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.22); }
 
 .app-stripe {
     position: absolute;
@@ -359,7 +372,7 @@ a:hover { color: #fff; text-decoration: underline; }
 
 @keyframes spinSlow { to { transform: rotate(360deg); } }
 
-main { position: relative; max-width: 860px; width: 100%; margin: 0 auto; flex: 1; display: flex; flex-direction: column; }
+main { position: relative; z-index: 1; max-width: 860px; width: 100%; margin: 0 auto; flex: 1; display: flex; flex-direction: column; }
 main::before, main::after { content: ''; margin: auto; }
 
 /* ==========================================================================
@@ -443,9 +456,7 @@ main::before, main::after { content: ''; margin: auto; }
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 14px;
-    max-height: min(64vh, 640px);
-    overflow-y: auto;
-    padding: 6px 14px 6px 4px;
+    padding: 6px 4px;
 }
 
 .team-grid::-webkit-scrollbar { width: 6px; }
@@ -1021,20 +1032,19 @@ footer p { color: var(--text-faint); font-size: 0.85rem; font-weight: 500; }
 footer a { color: var(--text-muted); }
 footer a:hover { color: var(--pl-lilac); }
 
-/* Below this width the fixed side rail becomes a compact top bar so the
-   content gets the full width. */
+/* Below this width the rail becomes a compact top bar and the whole page
+   scrolls normally (panes stack instead of scrolling independently). */
 @media (max-width: 900px) {
-    .hero-flex { flex-direction: column; }
+    .hero-flex { flex-direction: column; height: auto; overflow: visible; }
     .hero-panel {
-        position: static;
+        flex: none;
         width: 100%;
         height: auto;
-        min-height: 0;
         padding: 28px 24px;
         border-right: none;
         border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     }
-    .app-panel { margin-left: 0; }
+    .app-panel { height: auto; overflow-y: visible; }
     .crest-grid, .hero-glow { display: none; }
     .hero-crest { width: 150px; margin-bottom: 16px; }
     .hero-tag { display: none; }

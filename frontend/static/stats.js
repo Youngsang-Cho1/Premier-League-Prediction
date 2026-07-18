@@ -22,6 +22,7 @@ async function initStats() {
     renderTable();
     renderPredictions();
 
+    if (skipMotion()) return;
     gsap.fromTo('.stat-tile', { y: 16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, stagger: 0.08, ease: 'back.out(1.4)' });
     gsap.fromTo('.chart-card, .table-card', { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, stagger: 0.1, delay: 0.2, ease: 'power3.out' });
 }
@@ -106,6 +107,10 @@ function renderCharts() {
 }
 
 function renderTable() {
+    const sub = document.getElementById('xpointsSub');
+    if (sub && STATS.xpoints.season) {
+        sub.textContent = `Actual points vs. model-expected points — ${STATS.xpoints.season} season`;
+    }
     const body = document.getElementById('xpointsBody');
     STATS.xpoints.table.forEach((row, i) => {
         const diff = row.diff;

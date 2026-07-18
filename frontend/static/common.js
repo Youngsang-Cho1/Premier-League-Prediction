@@ -39,6 +39,14 @@ function setCrest(img, team) {
     };
 }
 
+/* True when entrance animations should be skipped: the ?nointro deep-link
+   or the user's reduced-motion preference. Pages use this to render content
+   immediately instead of fading it in. */
+function skipMotion() {
+    return new URLSearchParams(location.search).has('nointro')
+        || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
 /* Win/Draw/Lose probability doughnut. Shared so the predict and schedule
    pages always use the same theme-matched colors (Win = lilac, Draw = muted,
    Lose = rose). Destroys any prior chart on the canvas and returns the new
@@ -87,7 +95,9 @@ function runIntro() {
     const introLayer = document.getElementById('introLayer');
     const mainApp = document.getElementById('mainApp');
     const displayMode = mainApp.dataset.display || 'block';
-    const seen = sessionStorage.getItem('xpoints_intro_seen');
+    // ?nointro skips the animation (handy when linking straight to a page)
+    const noIntro = new URLSearchParams(location.search).has('nointro');
+    const seen = noIntro || sessionStorage.getItem('xpoints_intro_seen');
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     function revealApp(animated) {
