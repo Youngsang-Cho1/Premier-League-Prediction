@@ -49,12 +49,18 @@ def _from_fpl():
             continue
         kickoff = pd.to_datetime(m['kickoff_time'])
         out.append({
+            'kickoff': kickoff,
             'day': kickoff.strftime('%a'),
             'date': kickoff.strftime('%b %d'),
             'time': kickoff.strftime('%H:%M'),
             'home': _norm(teams[m['team_h']]),
             'away': _norm(teams[m['team_a']]),
         })
+    # The API doesn't guarantee chronological order — sort so [:10] is the
+    # next 10 fixtures, not an arbitrary 10.
+    out.sort(key=lambda f: f['kickoff'])
+    for f in out:
+        del f['kickoff']
     return out[:10]
 
 

@@ -1,6 +1,8 @@
 from flask import Flask, request, jsonify, render_template
 from src.infer import (predict_matches_bidirectional, get_matchup_insights,
                        predict_scoreline)
+from src.xpoints import compute_xpoints, recent_predictions
+from src.schedule_feed import upcoming_fixtures
 import csv
 import os
 
@@ -62,8 +64,6 @@ def schedule():
 def api_stats():
     """Real model-performance data for the stats page, derived from the
     season backtest and the xPoints table — no placeholders."""
-    from src.xpoints import compute_xpoints
-
     bt = _read_csv(BACKTEST_PATH)
     xpoints_table, xp_season = compute_xpoints()
 
@@ -112,41 +112,8 @@ def api_stats():
         'season_trend': season_trend,
         'market_compare': market_compare,
         'xpoints': {'season': xp_season, 'table': xpoints_table},
-        'recent_predictions': _recent_predictions(),
+        'recent_predictions': recent_predictions(),
     })
-
-
-def _recent_predictions(n=6):
-    """Model predictions on the most recent played matches, checked against
-    the actual result — the 'hit' flag is real, not fabricated."""
-    from src.xpoints import _season_home_rows
-    from src.infer import _MODEL
-    from src.train_model import feature_cols
-    import numpy as np
-
-    rows, _ = _season_home_rows()
-    if rows.empty:
-        return []
-    rows = rows.sort_values('Date').tail(n)
-    proba = _MODEL.predict_proba(rows[feature_cols])  # [L, D, W] for home
-    labels = ['Away Win', 'Draw', 'Home Win']
-
-    out = []
-    for i, r in enumerate(rows.itertuples()):
-        pick_idx = int(proba[i].argmax())
-        actual = int(r.Result)  # 0=L,1=D,2=W from home perspective
-        home, away = r.Team, r.Opponent
-        pick_name = (home + ' Win' if pick_idx == 2
-                     else away + ' Win' if pick_idx == 0 else 'Draw')
-        out.append({
-            'date': r.Date.strftime('%b %d'),
-            'home': home, 'away': away,
-            'pick': pick_name,
-            'conf': int(round(proba[i][pick_idx] * 100)),
-            'score': f"{int(r.GF)}-{int(r.GA)}",
-            'hit': pick_idx == actual,
-        })
-    return list(reversed(out))
 
 
 @app.route('/api/schedule')
@@ -154,9 +121,9 @@ def api_schedule():
     """Upcoming fixtures from the FPL API. Off-season (no future fixtures),
     falls back to the most recent played round from our own data so the page
     is never empty."""
-    from src.schedule_feed import upcoming_fixtures
     fixtures, is_past = upcoming_fixtures()
     return jsonify({'fixtures': fixtures, 'is_past': is_past})
+
 
 @app.route('/predict', methods=['POST'])
 def predict():
@@ -187,4 +154,5 @@ def predict():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5001))
-    app.run(debug=False, host='0.0.0.0', port=port)
+    debug = os.environ.get('FLASK_DEBUG', '').lower() in ('1', 'true', 'yes')
+    app.run(debug=debug, host='0.0.0.0', port=port)

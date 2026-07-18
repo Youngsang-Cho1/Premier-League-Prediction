@@ -39,6 +39,47 @@ function setCrest(img, team) {
     };
 }
 
+/* Win/Draw/Lose probability doughnut. Shared so the predict and schedule
+   pages always use the same theme-matched colors (Win = lilac, Draw = muted,
+   Lose = rose). Destroys any prior chart on the canvas and returns the new
+   instance. `probs` is ordered [Lose, Draw, Win]. */
+function renderProbabilityChart(canvas, probs, prevChart) {
+    if (prevChart) prevChart.destroy();
+    return new Chart(canvas.getContext('2d'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Lose', 'Draw', 'Win'],
+            datasets: [{
+                data: probs,
+                backgroundColor: ['#a05a72', '#6f5f80', '#d3a0da'],
+                borderColor: 'transparent',
+                borderWidth: 0,
+                hoverOffset: 8,
+                spacing: 3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '72%',
+            animation: { animateRotate: true, animateScale: false, duration: 800, easing: 'easeOutQuart' },
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        color: 'rgba(255, 255, 255, 0.75)',
+                        font: { size: 12, weight: '600' },
+                        padding: 18,
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                        boxWidth: 8
+                    }
+                }
+            }
+        }
+    });
+}
+
 /* Cinematic intro. Plays once per session; skippable by click/keypress;
    respects prefers-reduced-motion. A failsafe guarantees the app is
    revealed even if the GSAP timeline's onComplete never fires. */

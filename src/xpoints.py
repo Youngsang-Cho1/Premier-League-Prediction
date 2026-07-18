@@ -9,6 +9,8 @@ expected. This is real, computed data — not a placeholder.
 The heavy lifting (feature engineering, the trained model) is reused from
 src.infer, so this module only aggregates.
 """
+from functools import lru_cache
+
 import numpy as np
 import pandas as pd
 from src.infer import _MODEL, _DF
@@ -26,6 +28,10 @@ def _season_home_rows(season=None):
     return rows[rows['Season'] == season], season
 
 
+# Both outputs depend only on _MODEL and _DF, which are loaded once at import
+# and never change while the process runs — so cache the (expensive) batch
+# prediction instead of recomputing it on every request.
+@lru_cache(maxsize=4)
 def compute_xpoints(season=None):
     """Return the xPoints table for `season` (most recent by default) as a
     list of dicts sorted by actual points desc:
@@ -61,6 +67,34 @@ def compute_xpoints(season=None):
     } for team, v in agg.items()]
     table.sort(key=lambda r: (-r['points'], -r['xpoints']))
     return table, season
+
+
+@lru_cache(maxsize=1)
+def recent_predictions(n=6):
+    """Model predictions on the most recent played matches, checked against
+    the actual result — the 'hit' flag is real, not fabricated. Cached like
+    compute_xpoints since it depends only on the model and data."""
+    rows, _ = _season_home_rows()
+    if rows.empty:
+        return []
+    rows = rows.sort_values('Date').tail(n)
+    proba = _MODEL.predict_proba(rows[feature_cols])  # [L, D, W] for home
+
+    out = []
+    for i, r in enumerate(rows.itertuples()):
+        pick_idx = int(proba[i].argmax())
+        actual = int(r.Result)  # 0=L, 1=D, 2=W from home perspective
+        pick_name = (r.Team + ' Win' if pick_idx == 2
+                     else r.Opponent + ' Win' if pick_idx == 0 else 'Draw')
+        out.append({
+            'date': r.Date.strftime('%b %d'),
+            'home': r.Team, 'away': r.Opponent,
+            'pick': pick_name,
+            'conf': int(round(proba[i][pick_idx] * 100)),
+            'score': f"{int(r.GF)}-{int(r.GA)}",
+            'hit': pick_idx == actual,
+        })
+    return list(reversed(out))
 
 
 if __name__ == '__main__':

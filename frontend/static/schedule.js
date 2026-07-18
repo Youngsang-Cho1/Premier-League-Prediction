@@ -151,41 +151,12 @@ async function initSchedule() {
             }
         }
 
-        updateChart(probs);
+        probabilityChart = renderProbabilityChart(
+            document.getElementById('probabilityChart'), probs, probabilityChart);
 
         const tl = gsap.timeline();
         tl.fromTo("#resultArea", { y: 24, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7, ease: "power3.out" })
           .fromTo(".insight-card", { y: 16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, stagger: 0.1, ease: "back.out(1.4)" }, "-=0.35");
-    }
-
-    function updateChart(probs) {
-        const ctx = document.getElementById('probabilityChart').getContext('2d');
-        if (probabilityChart) probabilityChart.destroy();
-        probabilityChart = new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: ['Lose', 'Draw', 'Win'],
-                datasets: [{
-                    data: probs,
-                    backgroundColor: ['rgba(168, 90, 104, 0.85)', 'rgba(199, 154, 69, 0.85)', '#38003c'],
-                    borderColor: ['#a85a68', '#c79a45', '#38003c'],
-                    borderWidth: 2,
-                    hoverOffset: 12
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '70%',
-                animation: { animateRotate: true, animateScale: true, duration: 900, easing: 'easeOutQuart' },
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: { color: 'rgba(31, 21, 34, 0.8)', font: { size: 12, weight: 'bold' }, padding: 18, usePointStyle: true }
-                    }
-                }
-            }
-        });
     }
 
     resetBtn.addEventListener('click', resetUI);
