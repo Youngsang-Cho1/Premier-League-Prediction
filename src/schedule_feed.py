@@ -5,12 +5,23 @@ Off-season fallback: the most recent played round from our own dataset, so
 the page always has real matches to show. Team names are normalized to the
 display names used elsewhere in the app.
 """
+import time
+
 import pandas as pd
 import requests
 
 _FPL_FIXTURES = 'https://fantasy.premierleague.com/api/fixtures/?future=1'
 _FPL_BOOTSTRAP = 'https://fantasy.premierleague.com/api/bootstrap-static/'
 _HEADERS = {'User-Agent': 'Mozilla/5.0'}
+
+# Short per-request timeout so a slow/down FPL never ties up a worker; the
+# fallback kicks in immediately on failure.
+_FPL_TIMEOUT = 5
+
+# Cache the resolved fixtures briefly. Fixtures barely change intraday, so
+# this avoids hitting the external API on every page load.
+_CACHE_TTL = 600  # seconds
+_cache = {'at': 0, 'value': None}
 
 # FPL team names -> the display names used across the app / logo filenames.
 _FPL_TEAM_NAMES = {
@@ -35,10 +46,10 @@ def _norm(name):
 def _from_fpl():
     """Return upcoming fixtures from FPL, or [] if none/unavailable."""
     try:
-        fx = requests.get(_FPL_FIXTURES, headers=_HEADERS, timeout=15).json()
+        fx = requests.get(_FPL_FIXTURES, headers=_HEADERS, timeout=_FPL_TIMEOUT).json()
         if not fx:
             return []
-        boot = requests.get(_FPL_BOOTSTRAP, headers=_HEADERS, timeout=15).json()
+        boot = requests.get(_FPL_BOOTSTRAP, headers=_HEADERS, timeout=_FPL_TIMEOUT).json()
         teams = {t['id']: t['name'] for t in boot['teams']}
     except Exception:
         return []
@@ -83,8 +94,14 @@ def _from_recent_data(data_path='data/matches.csv'):
 
 def upcoming_fixtures():
     """(fixtures, is_past). is_past=True means the FPL feed had no future
-    fixtures (off-season) and we fell back to recent played matches."""
+    fixtures (off-season) and we fell back to recent played matches.
+    Result is cached for a few minutes to avoid hammering the FPL API."""
+    now = time.time()
+    if _cache['value'] is not None and now - _cache['at'] < _CACHE_TTL:
+        return _cache['value']
+
     fixtures = _from_fpl()
-    if fixtures:
-        return fixtures, False
-    return _from_recent_data(), True
+    result = (fixtures, False) if fixtures else (_from_recent_data(), True)
+    _cache['at'] = now
+    _cache['value'] = result
+    return result

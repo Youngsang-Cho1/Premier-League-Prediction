@@ -30,6 +30,17 @@ def _num(row, key):
         return None
 
 
+@app.route('/healthz')
+def healthz():
+    """Liveness/readiness probe. Confirms the model artifact is actually
+    loaded (not just that the process is up), so a broken deploy fails the
+    check instead of serving errors."""
+    from src.infer import _MODEL
+    ok = _MODEL is not None
+    return jsonify({'status': 'ok' if ok else 'unready',
+                    'model_loaded': ok}), (200 if ok else 503)
+
+
 @app.route('/')
 def home():
     return render_template('index.html')

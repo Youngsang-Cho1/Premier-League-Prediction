@@ -20,5 +20,5 @@ COPY . .
 # Expose the dynamic port
 EXPOSE 5001
 
-# Run with Gunicorn, listening on port 5001
-CMD ["gunicorn", "--bind", "0.0.0.0:5001", "app:app"]
+# Run with Gunicorn using the production config (workers, threads, timeouts)
+CMD ["gunicorn", "-c", "gunicorn.conf.py", "app:app"]

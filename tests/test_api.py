@@ -92,3 +92,11 @@ def test_api_schedule_returns_fixtures(client):
     assert len(data['fixtures']) >= 1
     fx = data['fixtures'][0]
     assert 'home' in fx and 'away' in fx
+
+
+def test_healthz_ok(client):
+    resp = client.get('/healthz')
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data['status'] == 'ok'
+    assert data['model_loaded'] is True

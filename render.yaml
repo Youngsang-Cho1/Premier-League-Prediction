@@ -6,6 +6,7 @@ services:
     region: oregon 
     dockerContext: .
     dockerfilePath: Dockerfile
+    healthCheckPath: /healthz
     envVars:
       - key: PORT
         value: 5001
