@@ -57,3 +57,24 @@ def test_opponent_features_are_mirrored(df):
                 (df['Date'] == sample['Date'])].iloc[0]
     assert sample['opp_Recent_GF_avg5'] == pytest.approx(mirror['Recent_GF_avg5'])
     assert sample['Recent_GF_avg5'] == pytest.approx(mirror['opp_Recent_GF_avg5'])
+
+
+def test_xg_rolling_excludes_own_match(df):
+    """Recent_xG_avg5 must be the mean of the PREVIOUS 5 matches' xG — a
+    match's own xG is only known after kickoff, so including it would leak."""
+    team_rows = df[df['Team'] == 'Arsenal'].sort_values('Date').reset_index(drop=True)
+    for i in [20, 60, 120]:
+        expected = team_rows['xG'].iloc[i - 5:i].mean()
+        assert team_rows['Recent_xG_avg5'].iloc[i] == pytest.approx(expected, nan_ok=True)
+
+
+def test_xg_diff_is_attack_minus_defence(df):
+    rows = df.dropna(subset=['Recent_xG_avg5', 'Recent_xGA_avg5']).head(50)
+    for r in rows.itertuples():
+        assert r.xG_diff5 == pytest.approx(r.Recent_xG_avg5 - r.Recent_xGA_avg5)
+
+
+def test_raw_xg_is_not_a_model_feature():
+    """Only the shifted rolling xG may be used; raw per-match xG would leak."""
+    assert 'xG' not in feature_cols
+    assert 'xGA' not in feature_cols

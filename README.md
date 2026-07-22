@@ -117,6 +117,17 @@ python -m src.ingest        # download/refresh -> data/matches.csv
 python -m src.train_model   # retrain + calibrate -> premier_model.pkl
 ```
 
+### On xG (and why it isn't a feature)
+
+Per-match expected goals is available from Understat and `src/xg_ingest.py`
+pulls it (`data/xg.csv`, 2015-16 onward, 99.9% joinable to the match table).
+It was evaluated properly — validation-season feature selection picked an
+xG-differential pair, but an 8-season walk-forward backtest moved log-loss by
+only **-0.0003** on average (better in 6/8 seasons, so the signal is real but
+negligible). xG largely overlaps the shots-on-target features already in the
+set, so it was **left out**: not worth a dependency on an unofficial scraped
+endpoint. The ingest module stays in the repo for future use.
+
 ---
 
 ## 🔁 MLOps: Continuous Training

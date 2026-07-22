@@ -28,6 +28,12 @@ feature_cols = (['is_home', 'days_rest',
                  'Recent_Result_venue_avg5', 'opp_Recent_Result_venue_avg5',
                  'SoT_ratio5', 'opp_SoT_ratio5', 'rest_diff'])
 
+# xG (Understat, via src.xg_ingest) was evaluated and deliberately left out:
+# across an 8-season walk-forward backtest it moved log-loss by only -0.0003
+# on average. The signal is real but tiny — xG largely overlaps the shots-on-
+# target features already in the set — and it would add a dependency on an
+# unofficial scraped endpoint. The ingest module is kept for future use.
+
 # Define function that tunes and evaluates the model and compare each hyper parameter's performances
 def tune_and_evaluate(estimator, cv, param_grid, model, X_train, y_train, X_test, y_test):
     grid = GridSearchCV(

@@ -1,3 +1,6 @@
+import os
+
+import numpy as np
 import pandas as pd
 
 # Result encoding used throughout: 0 = Loss, 1 = Draw, 2 = Win.
@@ -40,6 +43,25 @@ def _compute_elo(matches):
     return pre_h, pre_a, post_h, post_a
 
 
+XG_PATH = 'data/xg.csv'
+
+
+def _attach_xg(matches, xg_path=XG_PATH):
+    """Left-join per-match xG (from src.xg_ingest) onto the match table.
+
+    xG is an optional secondary source: if the file is missing the columns
+    come back as NaN and the xG-derived features simply drop out, so the
+    pipeline keeps working on the primary data alone.
+    """
+    if not os.path.exists(xg_path):
+        matches['xG_home'] = np.nan
+        matches['xG_away'] = np.nan
+        return matches
+
+    xg = pd.read_csv(xg_path, parse_dates=['Date'])
+    return matches.merge(xg, on=['Date', 'HomeTeam', 'AwayTeam'], how='left')
+
+
 def load_and_clean(filepath):
     """Build team-perspective feature rows from the match-level dataset
     (data/matches.csv, produced by src.ingest).
@@ -51,6 +73,7 @@ def load_and_clean(filepath):
     matches = pd.read_csv(filepath)
     matches['Date'] = pd.to_datetime(matches['Date'])
     matches = matches.sort_values('Date').reset_index(drop=True)
+    matches = _attach_xg(matches)
 
     elo_h, elo_a, elo_h_post, elo_a_post = _compute_elo(matches)
 
@@ -62,6 +85,7 @@ def load_and_clean(filepath):
         'GF': matches['FTHG'], 'GA': matches['FTAG'],
         'SoT': matches['HST'], 'SoTA': matches['AST'],
         'Cor': matches['HC'], 'CorA': matches['AC'],
+        'xG': matches['xG_home'], 'xGA': matches['xG_away'],
         'elo': elo_h, 'opp_elo': elo_a, 'elo_post': elo_h_post,
         'Result': matches['FTR'].map({'H': 2, 'D': 1, 'A': 0}),
     })
@@ -72,6 +96,7 @@ def load_and_clean(filepath):
         'GF': matches['FTAG'], 'GA': matches['FTHG'],
         'SoT': matches['AST'], 'SoTA': matches['HST'],
         'Cor': matches['AC'], 'CorA': matches['HC'],
+        'xG': matches['xG_away'], 'xGA': matches['xG_home'],
         'elo': elo_a, 'opp_elo': elo_h, 'elo_post': elo_a_post,
         'Result': matches['FTR'].map({'H': 0, 'D': 1, 'A': 2}),
     })
@@ -79,7 +104,9 @@ def load_and_clean(filepath):
     df['elo_diff'] = df['elo'] - df['opp_elo']
 
     # Short-term form: last 5 matches.
-    roll_cols = ['GF', 'GA', 'SoT', 'SoTA', 'Cor', 'CorA', 'Result']
+    # xG joins the rolling set: only the shift(1) rolling means are ever used
+    # as features, never a match's own xG (that would be leakage).
+    roll_cols = ['GF', 'GA', 'SoT', 'SoTA', 'Cor', 'CorA', 'xG', 'xGA', 'Result']
     for col in roll_cols:
         df[f'Recent_{col}_avg5'] = (
             df.groupby('Team')[col]
@@ -112,6 +139,14 @@ def load_and_clean(filepath):
         / (df['Recent_SoT_avg5'] + df['Recent_SoTA_avg5'])
     ).fillna(0.5)
 
+    # xG differential over the last 5: how much better the team's chances
+    # were than its opponents'. Underlying performance, less noisy than goals.
+    df['xG_diff5'] = df['Recent_xG_avg5'] - df['Recent_xGA_avg5']
+
+    # Finishing luck: goals scored minus goals expected. Positive means the
+    # team has been converting above its chance quality (often regresses).
+    df['xG_overperf5'] = df['Recent_GF_avg5'] - df['Recent_xG_avg5']
+
     df['days_rest'] = (
         df.groupby('Team')['Date'].diff().dt.days.clip(upper=21).fillna(7)
     )
@@ -120,7 +155,8 @@ def load_and_clean(filepath):
     # sides, so a self-merge attaches the opposing team's pre-match form.
     form_cols = ([f'Recent_{c}_avg5' for c in roll_cols]
                  + ['Recent_Result_avg20', 'Recent_Result_ewm',
-                    'Recent_Result_venue_avg5', 'SoT_ratio5', 'days_rest'])
+                    'Recent_Result_venue_avg5', 'SoT_ratio5',
+                    'xG_diff5', 'xG_overperf5', 'days_rest'])
     opp_form = df[['Team', 'Date'] + form_cols].rename(
         columns={'Team': 'Opponent', **{c: f'opp_{c}' for c in form_cols}}
     )

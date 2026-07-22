@@ -1,5 +1,7 @@
 """Schema and sanity checks for the master dataset — runs in CI before the
 pipeline so a malformed upstream CSV can never silently poison training."""
+import os
+
 import pandas as pd
 import pytest
 
@@ -45,3 +47,19 @@ def test_odds_are_valid_prices(matches):
     odds = matches[['B365H', 'B365D', 'B365A']].dropna()
     assert (odds > 1.0).all().all()
     assert len(odds) / len(matches) > 0.95
+
+
+def test_xg_data_present_and_joinable():
+    """xG is optional for the pipeline, but when the file exists it must line
+    up with the match table — otherwise the features silently go missing."""
+    if not os.path.exists('data/xg.csv'):
+        pytest.skip('data/xg.csv not present (xG is an optional source)')
+    xg = pd.read_csv('data/xg.csv', parse_dates=['Date'])
+    for col in ['Date', 'HomeTeam', 'AwayTeam', 'xG_home', 'xG_away']:
+        assert col in xg.columns
+    assert (xg['xG_home'] >= 0).all() and (xg['xG_away'] >= 0).all()
+
+    matches = pd.read_csv('data/matches.csv', parse_dates=['Date'])
+    joined = matches.merge(xg, on=['Date', 'HomeTeam', 'AwayTeam'], how='left')
+    # a few postponed/rescheduled games may not line up; the vast majority must
+    assert joined['xG_home'].notna().mean() > 0.98
