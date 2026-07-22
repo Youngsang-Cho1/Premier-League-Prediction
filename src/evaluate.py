@@ -17,6 +17,15 @@ from src.train_model import feature_cols
 
 HISTORY_PATH = 'metrics/history.csv'
 
+# If the most recent match is older than this, the league is between seasons:
+# there is nothing new to score, so evaluation (and retraining) stands down.
+MAX_IDLE_DAYS = 21
+
+# Below this many matches the metrics are too noisy to act on — a single
+# unusual round (e.g. the final matchday, when even the bookmakers do badly)
+# would otherwise look like model failure.
+MIN_MATCHES = 30
+
 
 def ranked_probability_score(y_true, proba):
     """Mean RPS over ordered outcomes L < D < W.
@@ -85,15 +94,35 @@ def evaluation_rows(df, window_days):
         subset=feature_cols + ['Result'])
 
 
+def is_stale(df, max_idle_days=MAX_IDLE_DAYS):
+    """True when no match has been played recently — i.e. the league is in
+    its summer break. Nothing meaningful can be evaluated or retrained then,
+    so the whole pipeline should stand down."""
+    last_match = df['Date'].max()
+    idle = (pd.Timestamp.now().normalize() - last_match).days
+    return idle > max_idle_days, last_match, idle
+
+
 def main(window_days=60, model_path='premier_model.pkl',
          data_path='data/matches.csv'):
     df = load_and_clean(data_path)
     raw = pd.read_csv(data_path, parse_dates=['Date'])
 
+    stale, last_match, idle = is_stale(df)
+    if stale:
+        print(f'Last match was {last_match:%Y-%m-%d} ({idle} days ago) — '
+              'between seasons, skipping evaluation.')
+        return None
+
     rows = evaluation_rows(df, window_days)
     if rows.empty:
         print(f'No matches played in the last {window_days} days — '
-              'off-season, nothing to evaluate.')
+              'nothing to evaluate.')
+        return None
+
+    if len(rows) < MIN_MATCHES:
+        print(f'Only {len(rows)} matches in the window (need {MIN_MATCHES}) — '
+              'too small a sample to score reliably, skipping.')
         return None
 
     model = joblib.load(model_path)

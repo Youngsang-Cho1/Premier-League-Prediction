@@ -28,15 +28,25 @@ MODEL_PATH = 'premier_model.pkl'
 
 
 def retrain_reasons(ev, dr):
+    """Why (if at all) the model should be retrained.
+
+    A bad absolute score only counts when the market did *not* also struggle:
+    some rounds (the final matchday, heavy rotation) are unpredictable for
+    everyone, and punishing the model for those would retrain on noise.
+    """
     reasons = []
     if ev is not None:
-        if ev['model_logloss'] > LOGLOSS_ABS_MAX:
+        gap = (ev['model_logloss'] - ev['odds_logloss']
+               if ev['odds_logloss'] is not None else None)
+
+        market_also_bad = (ev['odds_logloss'] is not None
+                           and ev['odds_logloss'] > LOGLOSS_ABS_MAX)
+        if ev['model_logloss'] > LOGLOSS_ABS_MAX and not market_also_bad:
             reasons.append(f"log-loss {ev['model_logloss']} > {LOGLOSS_ABS_MAX}")
-        if (ev['odds_logloss'] is not None
-                and ev['model_logloss'] - ev['odds_logloss'] > ODDS_GAP_MAX):
-            reasons.append(
-                f"gap to odds baseline {ev['model_logloss'] - ev['odds_logloss']:.4f}"
-                f" > {ODDS_GAP_MAX}")
+
+        if gap is not None and gap > ODDS_GAP_MAX:
+            reasons.append(f"gap to odds baseline {gap:.4f} > {ODDS_GAP_MAX}")
+
     if dr is not None and dr['drift_detected']:
         reasons.append(f"feature drift: {', '.join(dr['drifted_features'])}")
     return reasons
@@ -58,6 +68,17 @@ def gate(candidate_path, incumbent_path):
 
 def main(check_only=False):
     ingest.main()
+
+    # No new football, no pipeline. Between seasons there is nothing to score
+    # and nothing to learn from, so stand down entirely rather than react to
+    # stale matches.
+    df = load_and_clean('data/matches.csv')
+    stale, last_match, idle = evaluate.is_stale(df)
+    if stale:
+        print(f'\nLast match {last_match:%Y-%m-%d} ({idle} days ago) — '
+              'between seasons. Pipeline standing down; model unchanged.')
+        return
+
     ev = evaluate.main(window_days=WINDOW_DAYS)
     dr = drift.main(window_days=WINDOW_DAYS)
 
